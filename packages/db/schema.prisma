@@ -911,6 +911,111 @@ enum PlanningPeriod {
   YEARLY
 }
 
+// Governance Layer Enums
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  VIEW
+  EXPORT
+  IMPORT
+  LOGIN
+  LOGOUT
+  SWAP_REQUEST
+  SWAP_ACCEPT
+  SWAP_REJECT
+  SWAP_APPROVE
+  LEAVE_REQUEST
+  LEAVE_APPROVE
+  LEAVE_REJECT
+  ATTENDANCE_CHECK_IN
+  ATTENDANCE_CHECK_OUT
+  PAYROLL_CREATE
+  PAYROLL_APPROVE
+  PAYROLL_PROCESS
+  COMPENSATION_AWARD
+  TIME_CREDIT_CREATE
+  TIME_CREDIT_USE
+  DISPUTE_CREATE
+  DISPUTE_RESOLVE
+  COMMUNICATION_SEND
+  COMMUNICATION_READ
+  COMMUNICATION_ACKNOWLEDGE
+}
+
+enum LiabilityEventType {
+  SHIFT_CREATED
+  SHIFT_ASSIGNED
+  SHIFT_SWAP_REQUESTED
+  SHIFT_SWAP_ACCEPTED
+  SHIFT_SWAP_APPROVED
+  SHIFT_SWAP_REJECTED
+  LEAVE_REQUESTED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  ATTENDANCE_FRAUD
+  INCORRECT_APPROVAL
+  PAYROLL_CREATED
+  PAYROLL_APPROVED
+  PAYROLL_PROCESSED
+  COMPENSATION_AWARDED
+  TIME_CREDIT_CREATED
+  TIME_CREDIT_USED
+  DISPUTE_CREATED
+  DISPUTE_RESOLVED
+}
+
+enum VerificationStatus {
+  VERIFIED
+  UNVERIFIED
+  PENDING
+  FAILED
+  FLAGGED
+}
+
+enum DisputeCategory {
+  ATTENDANCE
+  SHIFT_SWAP
+  PAYROLL
+  LEAVE
+  COMPENSATION
+  TIME_BANK
+  GENERAL
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+  ESCALATED
+}
+
+enum ReconciliationStatus {
+  PENDING
+  MATCHED
+  MISMATCH
+  FLAGGED
+  RESOLVED
+}
+
+enum CommunicationType {
+  ROSTER_CHANGE
+  SHIFT_DIRECTIVE
+  OPERATIONAL_NOTICE
+  EMERGENCY_INSTRUCTION
+  GENERAL
+}
+
+enum ReadReceiptStatus {
+  SENT
+  DELIVERED
+  READ
+  ACKNOWLEDGED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -1076,6 +1181,21 @@ model Employee {
   // Phase 25: Attendance Reconciliation & Workforce Planning Relations
   attendanceReconciliations AttendanceReconciliation[] @relation("AttendanceReconciliation")
   
+  // Phase 26: Governance Layer Architecture Relations
+  auditLogs         AuditLog[] @relation("AuditLogPerformer")
+  auditApprovals    AuditLog[] @relation("AuditLogApprover")
+  liabilityRecords  LiabilityRecord[] @relation("LiabilityRecordLiable")
+  attendanceVerifications AttendanceVerification[] @relation("AttendanceVerificationEmployee")
+  supervisorVerifications AttendanceVerification[] @relation("AttendanceVerificationSupervisor")
+  payrollReconciliations PayrollReconciliation[] @relation("PayrollReconciliationEmployee")
+  payrollLocks      PayrollReconciliation[] @relation("PayrollReconciliationLockedBy")
+  workforceDisputes WorkforceDispute[] @relation("WorkforceDisputeEmployee")
+  disputeResolutions WorkforceDispute[] @relation("WorkforceDisputeResolver")
+  auditableCommunications AuditableCommunication[] @relation("AuditableCommunicationSender")
+  communicationReadReceipts CommunicationReadReceipt[] @relation("CommunicationReadReceiptEmployee")
+  payrollEvidencePacks PayrollEvidencePack[] @relation("PayrollEvidencePackEmployee")
+  generatedEvidencePacks PayrollEvidencePack[] @relation("PayrollEvidencePackGenerator")
+  
   // Recruitment Relations
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
@@ -1186,6 +1306,9 @@ model Department {
   
   // Phase 25: Attendance Reconciliation & Workforce Planning Relations
   workforceForecasts WorkforceForecast[]
+  
+  // Phase 26: Governance Layer Architecture Relations
+  auditableCommunications AuditableCommunication[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -2473,6 +2596,16 @@ model Company {
   // Phase 25: Attendance Reconciliation & Workforce Planning Relations
   attendanceReconciliations AttendanceReconciliation[]
   workforceForecasts WorkforceForecast[]
+  
+  // Phase 26: Governance Layer Architecture Relations
+  auditLogs         AuditLog[]
+  liabilityRecords  LiabilityRecord[]
+  attendanceVerifications AttendanceVerification[]
+  payrollReconciliations PayrollReconciliation[]
+  workforceDisputes WorkforceDispute[]
+  auditableCommunications AuditableCommunication[]
+  payrollEvidencePacks PayrollEvidencePack[]
+  governanceMetrics GovernanceMetric[]
   
   @@index([tenantId])
   @@index([code])
@@ -4902,4 +5035,311 @@ model WorkforceForecast {
   @@index([branchId])
   @@index([period])
   @@index([startDate])
+}
+
+// Governance Layer Models
+
+// Audit Engine - Immutable audit logs
+model AuditLog {
+  id              String      @id @default(cuid())
+  companyId       String
+  eventId         String      @unique
+  entityType      String      // SHIFT, LEAVE, PAYROLL, ATTENDANCE, etc.
+  entityId        String
+  action          AuditAction
+  beforeState     Json?
+  afterState      Json?
+  performedBy     String      // Employee ID
+  approvedBy      String?     // Employee ID if approval required
+  timestamp       DateTime    @default(now())
+  device          String?
+  ipAddress       String?
+  userAgent       String?
+  tenant          String      // Company identifier for multi-tenant
+  
+  createdAt       DateTime    @default(now())
+  
+  // Relations
+  company         Company     @relation("AuditLogCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  performer       Employee    @relation("AuditLogPerformer", fields: [performedBy], references: [id], onDelete: Cascade)
+  approver        Employee?   @relation("AuditLogApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([timestamp])
+  @@index([eventId])
+}
+
+// Liability Engine - Ownership tracking
+model LiabilityRecord {
+  id              String            @id @default(cuid())
+  companyId       String
+  eventType       LiabilityEventType
+  entity          String            // SHIFT, LEAVE, PAYROLL, etc.
+  entityId        String
+  liableParty     String            // Employee ID who is liable
+  liablePartyRole String            // SCHEDULER, REQUESTOR, ACCEPTOR, APPROVER, etc.
+  context         Json?             // Additional context
+  timestamp       DateTime          @default(now())
+  
+  createdAt       DateTime          @default(now())
+  
+  // Relations
+  company         Company           @relation("LiabilityRecordCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  liableEmployee  Employee          @relation("LiabilityRecordLiable", fields: [liableParty], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([eventType])
+  @@index([entity])
+  @@index([entityId])
+  @@index([liableParty])
+  @@index([timestamp])
+}
+
+// Attendance Verification Engine
+model AttendanceVerification {
+  id              String            @id @default(cuid())
+  companyId       String
+  attendanceId    String
+  employeeId      String
+  verificationScore Int             @default(0) // 0-100
+  status          VerificationStatus @default(PENDING)
+  
+  // Evidence points
+  gpsMatch        Boolean           @default(false)
+  gpsPoints       Int               @default(0)
+  registeredDevice Boolean          @default(false)
+  devicePoints    Int               @default(0)
+  selfieVerification Boolean       @default(false)
+  selfiePoints    Int               @default(0)
+  supervisorConfirmation Boolean    @default(false)
+  supervisorPoints Int              @default(0)
+  shiftAssignmentMatch Boolean     @default(false)
+  shiftPoints     Int               @default(0)
+  
+  // Verification details
+  gpsLocation     Json?
+  deviceId        String?
+  selfieImage     String?
+  supervisorId    String?
+  
+  // Flagging
+  flagged         Boolean           @default(false)
+  flagReason      String?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  // Relations
+  company         Company           @relation("AttendanceVerificationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee          @relation("AttendanceVerificationEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  supervisor      Employee?         @relation("AttendanceVerificationSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([attendanceId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([verificationScore])
+  @@index([flagged])
+}
+
+// Payroll Reconciliation Engine
+model PayrollReconciliation {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  payrollPeriodId String
+  status          ReconciliationStatus @default(PENDING)
+  
+  // Hours comparison
+  scheduledHours  Float               @default(0)
+  workedHours     Float               @default(0)
+  overtimeHours   Float               @default(0)
+  compensationDays Int                @default(0)
+  leaveTaken      Float               @default(0)
+  payableHours    Float               @default(0)
+  
+  // Discrepancies
+  discrepancies   Json?
+  resolved        Boolean             @default(false)
+  resolutionNotes String?
+  
+  // Lock status
+  locked          Boolean             @default(false)
+  lockedBy        String?
+  lockedAt        DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("PayrollReconciliationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("PayrollReconciliationEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  lockedByUser    Employee?           @relation("PayrollReconciliationLockedBy", fields: [lockedBy], references: [id], onDelete: SetNull)
+  
+  @@unique([companyId, employeeId, payrollPeriodId])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([payrollPeriodId])
+  @@index([status])
+  @@index([locked])
+}
+
+// Dispute Resolution Center
+model WorkforceDispute {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String
+  category        DisputeCategory
+  status          DisputeStatus   @default(OPEN)
+  title           String
+  description     String
+  
+  // Related entities
+  relatedEntity   String?         // SHIFT, LEAVE, PAYROLL, etc.
+  relatedEntityId String?
+  
+  // Evidence bundle
+  evidenceBundle  Json?           // Automatically gathered evidence
+  
+  // Resolution
+  resolution      String?
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  
+  // Priority
+  priority        String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("WorkforceDisputeCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation("WorkforceDisputeEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  resolver        Employee?       @relation("WorkforceDisputeResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([category])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+// Department Communication Audit
+model AuditableCommunication {
+  id              String              @id @default(cuid())
+  companyId       String
+  departmentId    String
+  postId          String              // Reference to DepartmentPost
+  type            CommunicationType
+  title           String
+  content         String
+  
+  // Read receipts
+  readReceipts    Json?               // Array of read receipt objects
+  
+  // Audit
+  sentBy          String
+  sentAt          DateTime            @default(now())
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("AuditableCommunicationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department         @relation("AuditableCommunicationDepartment", fields: [departmentId], references: [id], onDelete: Cascade)
+  sender          Employee            @relation("AuditableCommunicationSender", fields: [sentBy], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([postId])
+  @@index([type])
+  @@index([sentAt])
+}
+
+model CommunicationReadReceipt {
+  id              String              @id @default(cuid())
+  communicationId String
+  employeeId      String
+  status          ReadReceiptStatus   @default(SENT)
+  
+  sentAt          DateTime            @default(now())
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  acknowledgedAt  DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  communication    AuditableCommunication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("CommunicationReadReceiptEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([communicationId, employeeId])
+  @@index([communicationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+// Payroll Evidence Pack
+model PayrollEvidencePack {
+  id              String      @id @default(cuid())
+  companyId       String
+  employeeId      String
+  payrollId       String
+  
+  // Evidence components
+  attendanceSummary Json?
+  shiftHistory     Json?
+  overtimeHistory  Json?
+  leaveHistory     Json?
+  compensationHistory Json?
+  approvals        Json?
+  
+  // Generated
+  generatedAt      DateTime    @default(now())
+  generatedBy      String
+  
+  createdAt       DateTime    @default(now())
+  
+  // Relations
+  company         Company     @relation("PayrollEvidencePackCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee    @relation("PayrollEvidencePackEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  generator       Employee    @relation("PayrollEvidencePackGenerator", fields: [generatedBy], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, employeeId, payrollId])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([payrollId])
+  @@index([generatedAt])
+}
+
+// Governance Dashboard Metrics
+model GovernanceMetric {
+  id              String      @id @default(cuid())
+  companyId       String
+  metricType      String      // ATTENDANCE_EXCEPTIONS, PAYROLL_EXCEPTIONS, etc.
+  metricValue     Float
+  metricLabel     String
+  period          String      // DAILY, WEEKLY, MONTHLY
+  periodStart     DateTime
+  periodEnd       DateTime
+  
+  // Breakdown
+  breakdown       Json?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  company         Company     @relation("GovernanceMetricCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([metricType])
+  @@index([period])
+  @@index([periodStart])
+  @@index([periodEnd])
 }
