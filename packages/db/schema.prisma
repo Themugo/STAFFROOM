@@ -834,6 +834,30 @@ enum CompensationRuleType {
   CUSTOM
 }
 
+// Phase 22: Time Bank & Days Owed Enums
+enum TimeBankTransactionType {
+  EARNED
+  USED
+  ADJUSTMENT
+  EXPIRED
+}
+
+enum DebtType {
+  LATE_ARRIVAL
+  UNAPPROVED_ABSENCE
+  UNDERSERVED_NOTICE
+  ADVANCE_LEAVE
+  OTHER
+}
+
+enum CreditType {
+  OVERTIME
+  REST_DAY_COMPENSATION
+  PUBLIC_HOLIDAY_COMPENSATION
+  UNUSED_LEAVE
+  OTHER
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -981,6 +1005,11 @@ model Employee {
   // Phase 21: Duty Roster & Compensation Calendar Relations
   rosterAssignments  RosterAssignment[] @relation("EmployeeRosterAssignments")
   compensationCredits CompensationCredit[] @relation("EmployeeCompensationCredits")
+  
+  // Phase 22: Time Bank & Days Owed Relations
+  timeBank         TimeBank[] @relation("EmployeeTimeBank")
+  employeeDebts    EmployeeDebt[] @relation("EmployeeDebts")
+  employeeCredits  EmployeeCredit[] @relation("EmployeeCredits")
   
   // Recruitment Relations
   onboarding        Onboarding[]
@@ -2349,6 +2378,11 @@ model Company {
   // Phase 21: Duty Roster & Compensation Calendar Relations
   dutyRosters       DutyRoster[]
   compensationRules CompensationRule[]
+  
+  // Phase 22: Time Bank & Days Owed Relations
+  timeBanks        TimeBank[]
+  employeeDebts    EmployeeDebt[]
+  employeeCredits  EmployeeCredit[]
   
   @@index([tenantId])
   @@index([code])
@@ -4322,4 +4356,134 @@ model CompensationCredit {
   @@index([ruleId])
   @@index([referenceDate])
   @@index([expiresAt])
+}
+
+// Phase 22: Time Bank & Days Owed Models
+model TimeBank {
+  id              String                  @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Balance tracking
+  hoursEarned     Float                   @default(0)
+  hoursUsed       Float                   @default(0)
+  hoursRemaining  Float                   @default(0)
+  
+  // Settings
+  expiresAfter    Int?                    // Days after which hours expire
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee                @relation("EmployeeTimeBank", fields: [employeeId], references: [id], onDelete: Cascade)
+  transactions    TimeBankTransaction[]
+  
+  @@unique([companyId, employeeId])
+  @@index([companyId])
+  @@index([employeeId])
+}
+
+model TimeBankTransaction {
+  id              String                  @id @default(cuid())
+  timeBankId      String
+  
+  type            TimeBankTransactionType
+  
+  hours           Float
+  description     String?
+  
+  // Reference
+  referenceDate   DateTime
+  referenceType   String?                 // e.g., "OVERTIME", "COMPENSATION_LEAVE", "ADJUSTMENT"
+  referenceId     String?
+  
+  createdAt       DateTime                @default(now())
+  
+  timeBank        TimeBank                @relation(fields: [timeBankId], references: [id], onDelete: Cascade)
+  
+  @@index([timeBankId])
+  @@index([referenceDate])
+  @@index([type])
+}
+
+model EmployeeDebt {
+  id              String        @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  type            DebtType
+  
+  // Amount owed (in days or hours)
+  daysOwed        Float         @default(0)
+  hoursOwed       Float         @default(0)
+  
+  // Amount repaid
+  daysRepaid      Float         @default(0)
+  hoursRepaid     Float         @default(0)
+  
+  // Description
+  description     String        @db.Text
+  
+  // Reference
+  referenceDate   DateTime
+  referenceType   String?       // e.g., "LATE_ARRIVAL", "UNAPPROVED_ABSENCE"
+  referenceId     String?
+  
+  // Status
+  isResolved      Boolean       @default(false)
+  resolvedAt      DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee      @relation("EmployeeDebts", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([type])
+  @@index([isResolved])
+}
+
+model EmployeeCredit {
+  id              String        @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  type            CreditType
+  
+  // Amount owed by company (in days or hours)
+  daysOwed        Float         @default(0)
+  hoursOwed       Float         @default(0)
+  
+  // Amount used
+  daysUsed        Float         @default(0)
+  hoursUsed       Float         @default(0)
+  
+  // Description
+  description     String        @db.Text
+  
+  // Reference
+  referenceDate   DateTime
+  referenceType   String?       // e.g., "OVERTIME", "REST_DAY", "PUBLIC_HOLIDAY", "UNUSED_LEAVE"
+  referenceId     String?
+  
+  // Expiry
+  expiresAt       DateTime?
+  
+  // Status
+  isResolved      Boolean       @default(false)
+  resolvedAt      DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee      @relation("EmployeeCredits", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([isResolved])
 }

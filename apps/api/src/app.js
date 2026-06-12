@@ -58,6 +58,7 @@ app.use('/api/executive', require('./routes/executive'));
 app.use('/api/platform', require('./routes/platform'));
 app.use('/api/shift-management', require('./routes/shiftManagement'));
 app.use('/api/roster-compensation', require('./routes/rosterCompensation'));
+app.use('/api/time-bank', require('./routes/timeBank'));
 
 // Health check
 app.get('/health', (req, res) => {
