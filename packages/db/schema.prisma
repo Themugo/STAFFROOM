@@ -522,6 +522,76 @@ enum AuditStatus {
   OVERDUE
 }
 
+// Internal Communications Enums
+enum AnnouncementType {
+  GENERAL
+  URGENT
+  POLICY
+  EVENT
+  HOLIDAY
+  MAINTENANCE
+}
+
+enum AnnouncementPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ChatType {
+  DIRECT
+  GROUP
+  CHANNEL
+  ANNOUNCEMENT
+}
+
+enum ChatStatus {
+  ACTIVE
+  ARCHIVED
+  LOCKED
+}
+
+enum EventType {
+  COMPANY
+  DEPARTMENT
+  TEAM
+  SOCIAL
+  TRAINING
+  MEETING
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum SurveyType {
+  SATISFACTION
+  FEEDBACK
+  POLL
+  QUIZ
+  EVALUATION
+}
+
+enum SurveyStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum RecognitionType {
+  AWARD
+  MILESTONE
+  ACHIEVEMENT
+  THANK_YOU
+  BIRTHDAY
+  ANNIVERSARY
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -686,6 +756,19 @@ model Employee {
   // Asset Management Relations
   assetAssignments  AssetAssignment[]
   
+  // Internal Communications Relations
+  authoredAnnouncements Announcement[] @relation("AnnouncementAuthor")
+  readAnnouncements AnnouncementRead[]
+  createdChats Chat[] @relation("ChatCreator")
+  chatParticipants ChatParticipant[]
+  sentMessages ChatMessage[] @relation("ChatMessageSender")
+  organizedEvents Event[] @relation("EventOrganizer")
+  eventRegistrations EventRegistration[]
+  createdSurveys Survey[] @relation("SurveyCreator")
+  surveyResponses SurveyResponse[]
+  givenRecognitions Recognition[] @relation("RecognitionGiver")
+  receivedRecognitions Recognition[] @relation("RecognitionRecipient")
+  
   @@index([employeeId])
   @@index([email])
   @@index([companyId])
@@ -738,6 +821,10 @@ model Department {
   
   // Asset Management Relations
   assets            Asset[]
+  
+  // Internal Communications Relations
+  chats             Chat[]
+  events            Event[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -1970,6 +2057,13 @@ model Company {
   assetAssignments  AssetAssignment[]
   assetAudits       AssetAudit[]
   
+  // Internal Communications Relations
+  announcements     Announcement[]
+  chats             Chat[]
+  events            Event[]
+  surveys           Survey[]
+  recognitions      Recognition[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -2854,4 +2948,268 @@ model AssetAudit {
   @@index([auditorId])
   @@index([status])
   @@index([scheduledDate])
+}
+
+// Internal Communications Models
+model Announcement {
+  id              String                @id @default(cuid())
+  companyId       String
+  
+  type            AnnouncementType
+  priority        AnnouncementPriority @default(MEDIUM)
+  
+  title           String
+  content         String               @db.Text
+  imageUrl        String?
+  
+  targetAudience  Json?                 // ["ALL", "DEPARTMENT:123", "ROLE:MANAGER"]
+  
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  
+  authorId        String
+  
+  attachments     Json?                 // File URLs
+  tags            Json?                 // ["urgent", "policy", etc.]
+  
+  viewCount       Int                  @default(0)
+  
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  author          Employee              @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  reads           AnnouncementRead[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([priority])
+  @@index([publishedAt])
+  @@index([expiresAt])
+}
+
+model AnnouncementRead {
+  id              String        @id @default(cuid())
+  announcementId  String
+  employeeId      String
+  
+  readAt          DateTime      @default(now())
+  
+  announcement    Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  
+  @@unique([announcementId, employeeId])
+  @@index([announcementId])
+  @@index([employeeId])
+}
+
+model Chat {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  type            ChatType
+  status          ChatStatus    @default(ACTIVE)
+  
+  name            String?
+  description     String?
+  
+  createdBy       String
+  
+  departmentId    String?
+  isPublic        Boolean       @default(false)
+  
+  imageUrl        String?
+  
+  lastMessageAt   DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator         Employee      @relation("ChatCreator", fields: [createdBy], references: [id])
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  participants    ChatParticipant[]
+  messages        ChatMessage[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+  @@index([departmentId])
+  @@index([lastMessageAt])
+}
+
+model ChatParticipant {
+  id              String        @id @default(cuid())
+  chatId          String
+  employeeId      String
+  
+  joinedAt        DateTime      @default(now())
+  lastReadAt      DateTime?
+  
+  chat            Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  @@unique([chatId, employeeId])
+  @@index([chatId])
+  @@index([employeeId])
+}
+
+model ChatMessage {
+  id              String        @id @default(cuid())
+  chatId          String
+  senderId        String
+  
+  content         String       @db.Text
+  type            String        @default("TEXT") // TEXT, IMAGE, FILE, EMOJI
+  
+  replyToId       String?
+  
+  isEdited        Boolean       @default(false)
+  editedAt        DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  chat            Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender          Employee      @relation("ChatMessageSender", fields: [senderId], references: [id])
+  replyTo         ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id])
+  replies         ChatMessage[]  @relation("MessageReply")
+  
+  @@index([chatId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model Event {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  type            EventType
+  status          EventStatus   @default(DRAFT)
+  
+  title           String
+  description     String        @db.Text
+  imageUrl        String?
+  
+  startDate       DateTime
+  endDate         DateTime
+  
+  location        String?
+  isVirtual       Boolean       @default(false)
+  virtualLink     String?
+  
+  maxCapacity     Int?
+  departmentId    String?
+  
+  organizerId     String
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  organizer       Employee      @relation("EventOrganizer", fields: [organizerId], references: [id])
+  registrations   EventRegistration[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@index([departmentId])
+}
+
+model EventRegistration {
+  id              String        @id @default(cuid())
+  eventId         String
+  employeeId      String
+  
+  registeredAt    DateTime      @default(now())
+  attended        Boolean       @default(false)
+  
+  notes           String?       @db.Text
+  
+  event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@unique([eventId, employeeId])
+  @@index([eventId])
+  @@index([employeeId])
+}
+
+model Survey {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  type            SurveyType
+  status          SurveyStatus  @default(DRAFT)
+  
+  title           String
+  description     String        @db.Text
+  
+  startDate       DateTime
+  endDate         DateTime
+  
+  anonymous       Boolean       @default(false)
+  allowMultiple   Boolean       @default(false)
+  
+  questions       Json          // Survey questions
+  targetAudience  Json?         // ["ALL", "DEPARTMENT:123", "ROLE:MANAGER"]
+  
+  createdBy       String
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator         Employee      @relation("SurveyCreator", fields: [createdBy], references: [id])
+  responses       SurveyResponse[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model SurveyResponse {
+  id              String        @id @default(cuid())
+  surveyId        String
+  employeeId      String?
+  
+  answers         Json          // Survey answers
+  submittedAt     DateTime      @default(now())
+  
+  survey          Survey        @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  
+  @@index([surveyId])
+  @@index([employeeId])
+  @@index([submittedAt])
+}
+
+model Recognition {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  type            RecognitionType
+  
+  title           String
+  description     String        @db.Text
+  
+  recipientId     String
+  giverId         String
+  
+  imageUrl        String?
+  
+  likes           Int           @default(0)
+  
+  tags            Json?         // ["#teamwork", "#leadership"]
+  
+  createdAt       DateTime      @default(now())
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recipient       Employee      @relation("RecognitionRecipient", fields: [recipientId], references: [id])
+  giver           Employee      @relation("RecognitionGiver", fields: [giverId], references: [id])
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([recipientId])
+  @@index([giverId])
+  @@index([createdAt])
 }
