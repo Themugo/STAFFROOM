@@ -776,6 +776,31 @@ enum ApiDocumentationStatus {
   DEPRECATED
 }
 
+// Phase 20: Advanced Shift Management Enums
+enum ShiftType {
+  DAY
+  EVENING
+  NIGHT
+  MORNING
+  AFTERNOON
+  FLEXIBLE
+  ROTATING
+  CUSTOM
+}
+
+enum RotationPattern {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum ShiftStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -917,6 +942,9 @@ model Employee {
   registeredDevices RegisteredDevice[]
   attendanceLocations AttendanceLocation[]
   
+  // Phase 20: Advanced Shift Management Relations
+  shiftAssignments   ShiftAssignment[] @relation("EmployeeShiftAssignments")
+  
   // Recruitment Relations
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
@@ -1009,6 +1037,9 @@ model Department {
   // Internal Communications Relations
   chats             Chat[]
   events            Event[]
+  
+  // Phase 20: Advanced Shift Management Relations
+  shiftTemplates    ShiftTemplate[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -2271,6 +2302,9 @@ model Company {
   // Phase 19: Advanced Platform Features Relations
   businessRules     BusinessRule[]
   oAuthClients      OAuthClient[]
+  
+  // Phase 20: Advanced Shift Management Relations
+  shiftTemplates    ShiftTemplate[]
   
   @@index([tenantId])
   @@index([code])
@@ -3992,4 +4026,128 @@ model DeveloperAccount {
   @@index([email])
   @@index([apiKey])
   @@index([enabled])
+}
+
+// Phase 20: Advanced Shift Management Models
+model ShiftTemplate {
+  id              String        @id @default(cuid())
+  companyId       String
+  departmentId    String?
+  
+  name            String
+  description     String?
+  
+  type            ShiftType
+  status          ShiftStatus   @default(ACTIVE)
+  
+  // Shift timing
+  startTime       String        // e.g., "06:00"
+  endTime         String        // e.g., "14:00"
+  duration        Int           // Duration in minutes
+  
+  // Break periods
+  breakPeriods    Json?         // Array of break periods [{start, end, duration}]
+  
+  // Grace periods
+  gracePeriodStart Int?         // Grace period before shift start (minutes)
+  gracePeriodEnd   Int?         // Grace period after shift end (minutes)
+  
+  // Rotation configuration
+  rotationPattern  RotationPattern?
+  rotationDays     Json?         // Array of days for rotation
+  rotationCycle    Int?          // Rotation cycle in days
+  
+  // Color coding for calendar view
+  color           String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  assignments     ShiftAssignment[]
+  rotations       ShiftRotation[]
+  schedules       ShiftSchedule[]
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([type])
+  @@index([status])
+}
+
+model ShiftAssignment {
+  id              String        @id @default(cuid())
+  templateId      String
+  employeeId      String
+  
+  startDate       DateTime
+  endDate         DateTime?
+  
+  isActive        Boolean       @default(true)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  template        ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  employee        Employee      @relation("EmployeeShiftAssignments", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([templateId, employeeId, startDate])
+  @@index([templateId])
+  @@index([employeeId])
+  @@index([startDate])
+}
+
+model ShiftRotation {
+  id              String        @id @default(cuid())
+  templateId      String
+  
+  name            String
+  description     String?
+  
+  pattern         RotationPattern
+  cycleDays       Int           // Number of days in rotation cycle
+  
+  // Rotation schedule
+  rotationSchedule Json         // e.g., [{"day": 1, "shift": "DAY"}, {"day": 2, "shift": "NIGHT"}]
+  
+  // Auto-assign rules
+  autoAssign      Boolean       @default(false)
+  autoAssignRules Json?         // Rules for automatic assignment
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  template        ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@index([templateId])
+  @@index([pattern])
+}
+
+model ShiftSchedule {
+  id              String        @id @default(cuid())
+  templateId      String
+  employeeId      String?
+  
+  scheduledDate   DateTime
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  
+  // Actual clock in/out
+  actualStart     DateTime?
+  actualEnd       DateTime?
+  
+  status          ShiftStatus   @default(ACTIVE)
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  template        ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@index([templateId])
+  @@index([employeeId])
+  @@index([scheduledDate])
+  @@index([status])
 }

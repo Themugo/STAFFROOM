@@ -56,6 +56,7 @@ app.use('/api', require('./routes/integrations'));
 app.use('/api/enterprise', require('./routes/enterprise'));
 app.use('/api/executive', require('./routes/executive'));
 app.use('/api/platform', require('./routes/platform'));
+app.use('/api/shift-management', require('./routes/shiftManagement'));
 
 // Health check
 app.get('/health', (req, res) => {
