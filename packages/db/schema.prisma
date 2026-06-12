@@ -801,6 +801,39 @@ enum ShiftStatus {
   ARCHIVED
 }
 
+// Phase 21: Duty Roster & Compensation Calendar Enums
+enum RosterStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RosterPermission {
+  CREATE
+  EDIT
+  APPROVE
+  MONITOR
+  VIEW
+}
+
+enum CompensationType {
+  TOIL
+  OVERTIME
+  COMP_TIME
+  BONUS
+}
+
+enum CompensationRuleType {
+  HOURLY_TO_HOURLY
+  HOURLY_TO_DAILY
+  WEEKEND_MULTIPLIER
+  HOLIDAY_MULTIPLIER
+  CUSTOM
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -945,6 +978,10 @@ model Employee {
   // Phase 20: Advanced Shift Management Relations
   shiftAssignments   ShiftAssignment[] @relation("EmployeeShiftAssignments")
   
+  // Phase 21: Duty Roster & Compensation Calendar Relations
+  rosterAssignments  RosterAssignment[] @relation("EmployeeRosterAssignments")
+  compensationCredits CompensationCredit[] @relation("EmployeeCompensationCredits")
+  
   // Recruitment Relations
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
@@ -1040,6 +1077,9 @@ model Department {
   
   // Phase 20: Advanced Shift Management Relations
   shiftTemplates    ShiftTemplate[]
+  
+  // Phase 21: Duty Roster & Compensation Calendar Relations
+  dutyRosters       DutyRoster[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -2305,6 +2345,10 @@ model Company {
   
   // Phase 20: Advanced Shift Management Relations
   shiftTemplates    ShiftTemplate[]
+  
+  // Phase 21: Duty Roster & Compensation Calendar Relations
+  dutyRosters       DutyRoster[]
+  compensationRules CompensationRule[]
   
   @@index([tenantId])
   @@index([code])
@@ -4150,4 +4194,132 @@ model ShiftSchedule {
   @@index([employeeId])
   @@index([scheduledDate])
   @@index([status])
+}
+
+// Phase 21: Duty Roster & Compensation Calendar Models
+model DutyRoster {
+  id              String        @id @default(cuid())
+  companyId       String
+  departmentId    String
+  
+  name            String
+  description     String?
+  
+  startDate       DateTime
+  endDate         DateTime
+  
+  status          RosterStatus  @default(DRAFT)
+  
+  // Roster permissions
+  createdBy       String
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  assignments     RosterAssignment[]
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model RosterAssignment {
+  id              String        @id @default(cuid())
+  rosterId        String
+  employeeId      String
+  
+  rosterDate      DateTime
+  shiftTemplateId String?
+  
+  // Position in roster (for drag-and-drop)
+  position        Int?
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  roster          DutyRoster    @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  employee        Employee      @relation("EmployeeRosterAssignments", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([rosterId, employeeId, rosterDate])
+  @@index([rosterId])
+  @@index([employeeId])
+  @@index([rosterDate])
+}
+
+model CompensationRule {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  name            String
+  description     String?
+  
+  type            CompensationRuleType
+  
+  // Rule configuration
+  hoursWorked     Float               // Hours worked threshold
+  creditEarned    Float               // Credit earned
+  multiplier      Float?              // Multiplier for weekends/holidays
+  
+  // Applicability
+  appliesTo       Json?               // e.g., {"days": ["SATURDAY", "SUNDAY"], "shifts": ["NIGHT"]}
+  
+  enabled         Boolean             @default(true)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  credits         CompensationCredit[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([enabled])
+}
+
+model CompensationCredit {
+  id              String            @id @default(cuid())
+  companyId       String
+  employeeId      String
+  ruleId          String
+  
+  type            CompensationType
+  
+  // Hours worked
+  hoursWorked     Float
+  
+  // Credit earned
+  creditEarned    Float             // In hours or days
+  creditUsed      Float             @default(0) // Credit used (taken as leave)
+  
+  // Reference
+  referenceDate   DateTime          // Date when hours were worked
+  referenceType   String?           // e.g., "ATTENDANCE", "SHIFT"
+  referenceId     String?
+  
+  // Expiry
+  expiresAt       DateTime?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee          @relation("EmployeeCompensationCredits", fields: [employeeId], references: [id], onDelete: Cascade)
+  rule            CompensationRule  @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([ruleId])
+  @@index([referenceDate])
+  @@index([expiresAt])
 }
