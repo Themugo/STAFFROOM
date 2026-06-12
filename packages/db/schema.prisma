@@ -697,6 +697,32 @@ enum PluginStatus {
   ARCHIVED
 }
 
+// Executive Command Center Enums
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertCategory {
+  ATTENDANCE
+  PAYROLL
+  PERFORMANCE
+  COMPLIANCE
+  SECURITY
+  OPERATIONS
+  FINANCE
+}
+
+enum InsightType {
+  WORKFORCE
+  FINANCIAL
+  OPERATIONAL
+  STRATEGIC
+  COMPLIANCE
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -2184,6 +2210,10 @@ model Company {
   pluginInstallations PluginInstallation[]
   pluginReviews     PluginReview[]
   
+  // Executive Command Center Relations
+  executiveAlerts   ExecutiveAlert[]
+  executiveInsights ExecutiveInsight[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -3670,4 +3700,54 @@ model PluginReview {
   @@unique([pluginId, companyId])
   @@index([pluginId])
   @@index([companyId])
+}
+
+// Executive Command Center Models
+model ExecutiveAlert {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  severity        AlertSeverity
+  category        AlertCategory
+  
+  title           String
+  description     String          @db.Text
+  
+  metrics         Json?           // Alert metrics
+  recommendations Json?           // Actionable recommendations
+  
+  isResolved      Boolean         @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@index([companyId])
+  @@index([severity])
+  @@index([category])
+  @@index([isResolved])
+}
+
+model ExecutiveInsight {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  type            InsightType
+  
+  title           String
+  description     String        @db.Text
+  
+  data            Json          // Insight data
+  metrics         Json?         // Supporting metrics
+  
+  period          String        // e.g., "monthly", "quarterly"
+  periodStart     DateTime
+  periodEnd       DateTime
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([periodStart])
 }
