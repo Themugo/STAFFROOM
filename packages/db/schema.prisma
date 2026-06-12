@@ -1893,6 +1893,105 @@ enum DataSubjectRequestStatus {
   EXPIRED
 }
 
+// Phase 37: Harassment & Discrimination Workflows
+enum ProtectedCategory {
+  RACE
+  ETHNICITY
+  GENDER
+  SEXUAL_ORIENTATION
+  RELIGION
+  DISABILITY
+  AGE
+  MARITAL_STATUS
+  PREGNANCY
+  OTHER
+}
+
+enum ConfidentialityLevel {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  RESTRICTED
+  TOP_SECRET
+}
+
+enum WhistleblowerStatus {
+  REPORTED
+  UNDER_INVESTIGATION
+  SUBSTANTIATED
+  UNFOUNDED
+  RESOLVED
+  RETALIATION_REPORTED
+}
+
+// Phase 38: License & Certification Expiry
+enum CertificationStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  REVOKED
+  SUSPENDED
+  RENEWAL_PENDING
+}
+
+// Phase 39: SACCO Deduction Integration
+enum SACCOContributionType {
+  FIXED_AMOUNT
+  PERCENTAGE
+  TIERED
+  CUSTOM
+}
+
+enum SACCOLoanStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  PAID
+  DEFAULTED
+  WRITTEN_OFF
+}
+
+// Phase 40: Team Model
+enum TeamRole {
+  LEAD
+  MEMBER
+  CONTRIBUTOR
+  OBSERVER
+}
+
+enum TeamStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+// Phase 41: Internship & Graduate Programs
+enum ProgramType {
+  INTERNSHIP
+  GRADUATE_PROGRAM
+  TRAINEESHIP
+  APPRENTICESHIP
+  FELLOWSHIP
+}
+
+enum ProgramStatus {
+  PLANNED
+  RECRUITING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ConversionStatus {
+  NOT_ELIGIBLE
+  ELIGIBLE
+  OFFERED
+  ACCEPTED
+  DECLINED
+  HIRED
+  NOT_CONVERTED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -2255,6 +2354,33 @@ model Employee {
   privacyAssessmentsAsApprover PrivacyAssessment[]
   processingAgreementsAsApprover ProcessingAgreement[]
   
+  // Phase 37: Harassment & Discrimination Workflows Relations
+  whistleblowerProtections WhistleblowerProtection[]
+  whistleblowerInvestigations WhistleblowerProtection[]
+  externalReports ExternalReport[]
+  
+  // Phase 38: License & Certification Expiry Relations
+  licenses License[]
+  renewalReminders RenewalReminder[]
+  complianceVerifications ComplianceVerification[]
+  complianceVerificationsAsVerifier ComplianceVerification[]
+  
+  // Phase 39: SACCO Deduction Integration Relations
+  saccoMemberships SACCOMembership[]
+  saccoContributions SACCOContribution[]
+  saccoLoans SACCOLoan[]
+  saccoLoanRepayments SACCOLoanRepayment[]
+  saccoStatements SACCOStatement[]
+  
+  // Phase 40: Team Model Relations
+  teamsAsLead Team[]
+  teamMemberships TeamMember[]
+  teamPerformanceAsReviewer TeamPerformance[]
+  
+  // Phase 41: Internship & Graduate Programs Relations
+  internsAsMentor Intern[]
+  programEvaluationsAsEvaluator ProgramEvaluation[]
+  
   @@index([employeeId])
   @@index([email])
   @@index([companyId])
@@ -2353,6 +2479,9 @@ model Department {
   
   // Phase 32: Benefits Eligibility Rules Relations
   benefitsEligibilityRules BenefitsEligibilityRule[]
+  
+  // Phase 40: Team Model Relations
+  teams Team[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -3778,6 +3907,34 @@ model Company {
   dataBreaches DataBreach[]
   privacyAssessments PrivacyAssessment[]
   processingAgreements ProcessingAgreement[]
+  
+  // Phase 37: Harassment & Discrimination Workflows Relations
+  whistleblowerProtections WhistleblowerProtection[]
+  externalReports ExternalReport[]
+  
+  // Phase 38: License & Certification Expiry Relations
+  licenses License[]
+  renewalReminders RenewalReminder[]
+  complianceVerifications ComplianceVerification[]
+  
+  // Phase 39: SACCO Deduction Integration Relations
+  saccoMemberships SACCOMembership[]
+  saccoContributions SACCOContribution[]
+  saccoLoans SACCOLoan[]
+  saccoLoanRepayments SACCOLoanRepayment[]
+  saccoStatements SACCOStatement[]
+  
+  // Phase 40: Team Model Relations
+  teams Team[]
+  teamMembers TeamMember[]
+  teamGoals TeamGoal[]
+  teamPerformance TeamPerformance[]
+  
+  // Phase 41: Internship & Graduate Programs Relations
+  internshipPrograms InternshipProgram[]
+  interns Intern[]
+  programEvaluations ProgramEvaluation[]
+  conversionTracking ConversionTracking[]
   
   @@index([tenantId])
   @@index([code])
@@ -9774,4 +9931,715 @@ model ProcessingAgreement {
   @@index([companyId])
   @@index([effectiveDate])
   @@index([expiryDate])
+}
+
+// Phase 37: Harassment & Discrimination Workflows
+model WhistleblowerProtection {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Report Details
+  reportType      String
+  protectedCategory ProtectedCategory
+  description     String
+  
+  // Confidentiality
+  confidentialityLevel ConfidentialLevel @default(CONFIDENTIAL)
+  
+  // Investigation
+  status          WhistleblowerStatus @default(REPORTED)
+  investigatorId  String?
+  investigationStartDate DateTime?
+  investigationEndDate DateTime?
+  
+  // Findings
+  findings        String?
+  substantiated    Boolean?
+  
+  // Protection
+  protectionMeasures Json?
+  retaliationReported Boolean         @default(false)
+  retaliationDate DateTime?
+  
+  // Resolution
+  resolvedDate    DateTime?
+  resolutionNotes String?
+  
+  // Documents
+  evidenceFiles   Json?               // Array of file URLs
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("WhistleblowerProtectionCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeWhistleblowerProtection", fields: [employeeId], references: [id], onDelete: Cascade)
+  investigator    Employee?           @relation("WhistleblowerProtectionInvestigator", fields: [investigatorId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([protectedCategory])
+}
+
+model ExternalReport {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  
+  // Report Details
+  reportType      String
+  authority       String              // External authority name
+  reportDate      DateTime
+  
+  // Report Content
+  description     String
+  reportReference String?
+  
+  // Status
+  status          WhistleblowerStatus @default(REPORTED)
+  
+  // Follow-up
+  responseDate    DateTime?
+  responseNotes   String?
+  
+  // Documents
+  reportFile      String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ExternalReportCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?           @relation("EmployeeExternalReport", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([reportDate])
+  @@index([status])
+}
+
+// Phase 38: License & Certification Expiry
+model License {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // License Details
+  licenseType     String
+  licenseNumber   String
+  issuingAuthority String
+  
+  // Validity
+  issueDate       DateTime
+  expiryDate      DateTime
+  status          CertificationStatus @default(ACTIVE)
+  
+  // Renewal
+  renewalReminderDays Int?
+  lastRenewalDate DateTime?
+  
+  // Documents
+  licenseFile     String?
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("LicenseCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeLicense", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, employeeId, licenseNumber])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([expiryDate])
+  @@index([status])
+}
+
+model RenewalReminder {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  licenseId       String?
+  certificationId String?
+  
+  // Reminder Details
+  reminderType    String
+  reminderDate    DateTime
+  sentDate        DateTime?
+  
+  // Status
+  status          CertificationStatus @default(RENEWAL_PENDING)
+  
+  // Action
+  actionTaken     Boolean             @default(false)
+  actionDate      DateTime?
+  actionNotes     String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("RenewalReminderCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeRenewalReminder", fields: [employeeId], references: [id], onDelete: Cascade)
+  license         License?            @relation("LicenseRenewalReminder", fields: [licenseId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([reminderDate])
+  @@index([status])
+}
+
+model ComplianceVerification {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  licenseId       String?
+  certificationId String?
+  
+  // Verification Details
+  verificationType String
+  verificationDate DateTime
+  verifiedBy      String
+  
+  // Result
+  isCompliant     Boolean
+  complianceNotes String?
+  
+  // Documents
+  verificationFile String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("ComplianceVerificationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeComplianceVerification", fields: [employeeId], references: [id], onDelete: Cascade)
+  license         License?            @relation("LicenseComplianceVerification", fields: [licenseId], references: [id])
+  verifier        Employee            @relation("ComplianceVerificationVerifier", fields: [verifiedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([verificationDate])
+}
+
+// Phase 39: SACCO Deduction Integration
+model SACCOMembership {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Membership Details
+  saccoName       String
+  membershipNumber String
+  joinDate        DateTime
+  
+  // Contribution
+  contributionType SACCOContributionType
+  contributionAmount Float
+  contributionPercentage Float?
+  
+  // Status
+  active          Boolean             @default(true)
+  leaveDate       DateTime?
+  
+  // Documents
+  membershipFile  String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("SACCOMembershipCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeSACCOMembership", fields: [employeeId], references: [id], onDelete: Cascade)
+  contributions   SACCOContribution[]
+  loans           SACCOLoan[]
+  
+  @@unique([companyId, employeeId, membershipNumber])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([active])
+}
+
+model SACCOContribution {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  membershipId    String
+  
+  // Contribution Details
+  contributionDate DateTime
+  amount          Float
+  currency        String              @default("USD")
+  
+  // Type
+  contributionType SACCOContributionType
+  contributionPercentage Float?
+  
+  // Period
+  period          String              // Monthly, Weekly, etc.
+  
+  // Processing
+  processedDate   DateTime?
+  referenceNumber String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("SACCOContributionCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeSACCOContribution", fields: [employeeId], references: [id], onDelete: Cascade)
+  membership      SACCOMembership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([membershipId])
+  @@index([contributionDate])
+}
+
+model SACCOLoan {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  membershipId    String
+  
+  // Loan Details
+  loanType        String
+  loanAmount      Float
+  currency        String              @default("USD")
+  
+  // Terms
+  interestRate    Float
+  repaymentPeriod Int                // In months
+  monthlyPayment Float
+  
+  // Dates
+  applicationDate DateTime
+  approvalDate    DateTime?
+  disbursementDate DateTime?
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  // Status
+  status          SACCOLoanStatus     @default(PENDING)
+  
+  // Repayment
+  totalRepaid     Float               @default(0)
+  outstandingBalance Float
+  
+  // Guarantors
+  guarantors      Json?               // Array of guarantor employee IDs
+  
+  // Documents
+  loanAgreementFile String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("SACCOLoanCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeSACCOLoan", fields: [employeeId], references: [id], onDelete: Cascade)
+  membership      SACCOMembership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  repayments      SACCOLoanRepayment[]
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([membershipId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model SACCOLoanRepayment {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  loanId          String
+  
+  // Repayment Details
+  repaymentDate   DateTime
+  amount          Float
+  currency        String              @default("USD")
+  
+  // Breakdown
+  principalAmount Float?
+  interestAmount  Float?
+  
+  // Processing
+  processedDate   DateTime?
+  referenceNumber String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("SACCOLoanRepaymentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeSACCOLoanRepayment", fields: [employeeId], references: [id], onDelete: Cascade)
+  loan            SACCOLoan           @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([loanId])
+  @@index([repaymentDate])
+}
+
+model SACCOStatement {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  membershipId    String
+  
+  // Statement Details
+  statementDate   DateTime
+  period          String              // Monthly, Quarterly, etc.
+  
+  // Balances
+  openingBalance  Float
+  contributions   Float
+  withdrawals     Float
+  interestEarned  Float?
+  closingBalance  Float
+  
+  // Currency
+  currency        String              @default("USD")
+  
+  // Documents
+  statementFile   String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("SACCOStatementCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeSACCOStatement", fields: [employeeId], references: [id], onDelete: Cascade)
+  membership      SACCOMembership     @relation("SACCOMembershipStatement", fields: [membershipId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([membershipId])
+  @@index([statementDate])
+}
+
+// Phase 40: Team Model
+model Team {
+  id              String              @id @default(cuid())
+  companyId       String
+  departmentId    String?
+  
+  // Team Details
+  name            String
+  description     String?
+  purpose         String?
+  
+  // Status
+  status          TeamStatus          @default(ACTIVE)
+  
+  // Leadership
+  leadId          String?
+  
+  // Period
+  startDate       DateTime
+  endDate         DateTime?
+  
+  // Goals
+  goals           Json?               // Array of goal objects
+  
+  // Settings
+  settings        Json?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("TeamCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?         @relation("TeamDepartment", fields: [departmentId], references: [id])
+  lead            Employee?           @relation("TeamLead", fields: [leadId], references: [id])
+  members         TeamMember[]
+  teamGoals       TeamGoal[]
+  teamPerformance TeamPerformance[]
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model TeamMember {
+  id              String              @id @default(cuid())
+  companyId       String
+  teamId          String
+  employeeId      String
+  
+  // Member Details
+  role            TeamRole
+  joinDate        DateTime
+  leaveDate       DateTime?
+  
+  // Responsibilities
+  responsibilities Json?
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("TeamMemberCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  team            Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeTeamMember", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, employeeId])
+  @@index([companyId])
+  @@index([teamId])
+  @@index([employeeId])
+  @@index([active])
+}
+
+model TeamGoal {
+  id              String              @id @default(cuid())
+  companyId       String
+  teamId          String
+  
+  // Goal Details
+  title           String
+  description     String?
+  
+  // Metrics
+  targetValue     Float
+  currentValue    Float               @default(0)
+  unit            String?
+  
+  // Timeline
+  startDate       DateTime
+  targetDate      DateTime
+  completedDate   DateTime?
+  
+  // Status
+  status          TeamStatus          @default(ACTIVE)
+  
+  // Priority
+  priority        String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("TeamGoalCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  team            Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([teamId])
+  @@index([targetDate])
+  @@index([status])
+}
+
+model TeamPerformance {
+  id              String              @id @default(cuid())
+  companyId       String
+  teamId          String
+  
+  // Performance Details
+  period          String              // Monthly, Quarterly, etc.
+  periodStartDate DateTime
+  periodEndDate   DateTime
+  
+  // Metrics
+  score           Float
+  rating          String?
+  
+  // Details
+  achievements    Json?
+  challenges      Json?
+  recommendations Json?
+  
+  // Review
+  reviewedBy      String?
+  reviewDate      DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("TeamPerformanceCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  team            Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  reviewer        Employee?           @relation("TeamPerformanceReviewer", fields: [reviewedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([teamId])
+  @@index([periodStartDate])
+}
+
+// Phase 41: Internship & Graduate Programs
+model InternshipProgram {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Program Details
+  programName     String
+  programType     ProgramType
+  description     String?
+  
+  // Duration
+  durationWeeks   Int
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Capacity
+  capacity        Int
+  currentEnrollment Int              @default(0)
+  
+  // Stipend
+  stipendAmount   Float?
+  stipendCurrency String              @default("USD")
+  
+  // Status
+  status          ProgramStatus       @default(PLANNED)
+  
+  // Requirements
+  requirements    Json?
+  
+  // Documents
+  programDocument String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("InternshipProgramCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  interns         Intern[]
+  programEvaluations ProgramEvaluation[]
+  
+  @@index([companyId])
+  @@index([programType])
+  @@index([status])
+  @@index([startDate])
+}
+
+model Intern {
+  id              String              @id @default(cuid())
+  companyId       String
+  programId       String
+  
+  // Personal Details
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  
+  // Education
+  university      String
+  degree          String
+  major           String?
+  graduationYear  Int
+  
+  // Internship Details
+  startDate       DateTime
+  endDate         DateTime
+  status          ProgramStatus       @default(RECRUITING)
+  
+  // Mentor
+  mentorId        String?
+  
+  // Performance
+  performanceRating Float?
+  performanceNotes String?
+  
+  // Conversion
+  conversionStatus ConversionStatus   @default(NOT_ELIGIBLE)
+  conversionDate  DateTime?
+  
+  // Documents
+  resumeFile      String?
+  contractFile    String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("InternCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  program         InternshipProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  mentor          Employee?           @relation("InternMentor", fields: [mentorId], references: [id])
+  
+  @@index([companyId])
+  @@index([programId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model ProgramEvaluation {
+  id              String              @id @default(cuid())
+  companyId       String
+  programId       String
+  internId        String?
+  
+  // Evaluation Details
+  evaluationType  String
+  evaluationDate  DateTime
+  evaluatorId     String
+  
+  // Scores
+  technicalScore  Float?
+  softSkillsScore Float?
+  overallScore    Float?
+  
+  // Feedback
+  strengths       Json?
+  improvements    Json?
+  overallFeedback String?
+  
+  // Recommendation
+  recommendation   String?
+  
+  // Documents
+  evaluationFile  String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("ProgramEvaluationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  program         InternshipProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  intern          Intern?             @relation("InternProgramEvaluation", fields: [internId], references: [id])
+  evaluator       Employee            @relation("ProgramEvaluationEvaluator", fields: [evaluatorId], references: [id])
+  
+  @@index([companyId])
+  @@index([programId])
+  @@index([internId])
+  @@index([evaluationDate])
+}
+
+model ConversionTracking {
+  id              String              @id @default(cuid())
+  companyId       String
+  programId       String
+  internId        String
+  
+  // Conversion Details
+  conversionStatus ConversionStatus
+  offerDate       DateTime?
+  offerAcceptedDate DateTime?
+  startDate       DateTime?
+  
+  // Position
+  positionId      String?
+  departmentId    String?
+  salary          Float?
+  
+  // Documents
+  offerLetterFile String?
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ConversionTrackingCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  program         InternshipProgram   @relation("ProgramConversionTracking", fields: [programId], references: [id])
+  intern          Intern              @relation("InternConversionTracking", fields: [internId], references: [id])
+  
+  @@index([companyId])
+  @@index([programId])
+  @@index([internId])
+  @@index([conversionStatus])
 }
