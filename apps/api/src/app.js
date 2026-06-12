@@ -44,6 +44,8 @@ app.use('/api/workflows', require('./routes/universalWorkflow'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/recruitment', require('./routes/recruitment'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/security', require('./routes/security'));
+app.use('/api/audit', require('./routes/audit'));
 
 // Health check
 app.get('/health', (req, res) => {

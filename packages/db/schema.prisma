@@ -284,6 +284,55 @@ enum ExecutionStatus {
   ON_HOLD
 }
 
+// Enterprise Security Enums
+enum MFAType {
+  SMS
+  EMAIL
+  TOTP
+  AUTHENTICATOR_APP
+}
+
+enum MFAStatus {
+  ENABLED
+  DISABLED
+  PENDING_SETUP
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  TERMINATED
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  EXPORT
+  IMPORT
+  CONFIGURE
+}
+
+enum AuditSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum PermissionScope {
+  GLOBAL
+  DEPARTMENT
+  TEAM
+  PERSONAL
+}
+
 model User {
   id                String   @id @default(cuid())
   email             String   @unique
@@ -297,11 +346,20 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   
+  tenantId          String?
+  
   employee          Employee?
   sessions          Session[]
   auditLogs         AuditLog[]
+  refreshTokens      RefreshToken[]
+  multiFactorAuth   MultiFactorAuth?
+  loginHistory       LoginHistory[]
+  deviceSessions    DeviceSession[]
+  
+  tenant            Tenant?  @relation(fields: [tenantId], references: [id])
   
   @@index([email])
+  @@index([tenantId])
 }
 
 model Session {
@@ -1420,4 +1478,178 @@ model WorkflowApproval {
   @@index([executionId])
   @@index([approverId])
   @@index([status])
+}
+
+// Enterprise Security Models
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  token       String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model MultiFactorAuth {
+  id          String    @id @default(cuid())
+  userId      String
+  type        MFAType
+  secret      String?   // For TOTP
+  phoneNumber String?   // For SMS
+  email       String?   // For Email
+  status      MFAStatus @default(DISABLED)
+  
+  backupCodes Json?     // Backup codes for recovery
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+}
+
+model LoginHistory {
+  id          String    @id @default(cuid())
+  userId      String
+  
+  ipAddress   String?
+  userAgent   String?
+  deviceType  String?
+  browser     String?
+  os          String?
+  
+  loginTime   DateTime  @default(now())
+  logoutTime  DateTime?
+  status      String    // SUCCESS, FAILED, BLOCKED
+  failureReason String?
+  
+  location    Json?     // { city, country, latitude, longitude }
+  
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([loginTime])
+  @@index([status])
+}
+
+model DeviceSession {
+  id          String        @id @default(cuid())
+  userId      String
+  
+  deviceName  String
+  deviceType  String        // MOBILE, TABLET, DESKTOP
+  deviceFingerprint String  // Unique device identifier
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  lastActive  DateTime      @default(now())
+  expiresAt   DateTime
+  status      SessionStatus @default(ACTIVE)
+  
+  isTrusted   Boolean       @default(false)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([deviceFingerprint])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id          String        @id @default(cuid())
+  userId      String?
+  
+  action      AuditAction
+  severity    AuditSeverity @default(INFO)
+  
+  entityType  String        // User, Employee, Department, etc.
+  entityId    String?
+  
+  description String
+  metadata    Json?         // Additional context
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime      @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+model Permission {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String?
+  
+  resource    String        // employees, departments, payroll, etc.
+  action      String        // create, read, update, delete
+  
+  scope       PermissionScope @default(GLOBAL)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  rolePermissions RolePermission[]
+  
+  @@index([resource])
+  @@index([action])
+  @@index([scope])
+}
+
+model RolePermission {
+  id          String    @id @default(cuid())
+  roleId      String
+  permissionId String
+  
+  createdAt   DateTime  @default(now())
+  
+  role        Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model Tenant {
+  id          String    @id @default(cuid())
+  name        String
+  domain      String    @unique
+  subdomain   String?   @unique
+  
+  isActive    Boolean   @default(true)
+  
+  encryptionKey String?  // For data encryption at rest
+  
+  settings    Json?     // Tenant-specific settings
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  users       User[]
+  
+  @@index([domain])
+  @@index([subdomain])
+  @@index([isActive])
 }
