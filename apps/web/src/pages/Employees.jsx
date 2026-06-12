@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import { Plus, Search, MoreVertical } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 
 export default function Employees() {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,7 +87,11 @@ export default function Employees() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredEmployees.map((employee) => (
-                <tr key={employee.id} className="hover:bg-gray-50">
+                <tr 
+                  key={employee.id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/employees/${employee.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -121,7 +127,13 @@ export default function Employees() {
                     {formatDateTime(employee.hireDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="p-1 hover:bg-gray-100 rounded">
+                    <button 
+                      className="p-1 hover:bg-gray-100 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Handle menu click
+                      }}
+                    >
                       <MoreVertical className="w-5 h-5" />
                     </button>
                   </td>

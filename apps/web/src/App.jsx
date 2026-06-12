@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
+import EmployeeProfile from './pages/EmployeeProfile';
 import Departments from './pages/Departments';
 import Attendance from './pages/Attendance';
 
@@ -44,6 +45,11 @@ function App() {
               <Route path="/employees" element={
                 <ProtectedRoute>
                   <Employees />
+                </ProtectedRoute>
+              } />
+              <Route path="/employees/:id" element={
+                <ProtectedRoute>
+                  <EmployeeProfile />
                 </ProtectedRoute>
               } />
               <Route path="/departments" element={

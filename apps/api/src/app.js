@@ -32,6 +32,7 @@ app.use('/api/', limiter);
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
+app.use('/api/employees', require('./routes/employee360'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/positions', require('./routes/positions'));
 app.use('/api/attendance', require('./routes/attendance'));

@@ -190,3 +190,165 @@ export const leaveSchema = createValidationSchema({
     { minLength: 10, message: 'Reason must be at least 10 characters' }
   ]
 });
+
+// Employee 360 Profile Validation Schemas
+
+export const employmentHistorySchema = createValidationSchema({
+  company: [
+    { required: true, message: 'Company name is required' },
+    { minLength: 2, message: 'Company name must be at least 2 characters' }
+  ],
+  position: [
+    { required: true, message: 'Position is required' }
+  ],
+  startDate: [
+    { required: true, message: 'Start date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  endDate: [
+    { date: true, message: 'Please enter a valid date' }
+  ]
+});
+
+export const contractSchema = createValidationSchema({
+  type: [
+    { required: true, message: 'Contract type is required' }
+  ],
+  startDate: [
+    { required: true, message: 'Start date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  endDate: [
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  salary: [
+    { min: 0, message: 'Salary must be a positive number' }
+  ]
+});
+
+export const certificationSchema = createValidationSchema({
+  name: [
+    { required: true, message: 'Certification name is required' },
+    { minLength: 2, message: 'Name must be at least 2 characters' }
+  ],
+  issuingBody: [
+    { required: true, message: 'Issuing body is required' }
+  ],
+  issueDate: [
+    { required: true, message: 'Issue date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  expiryDate: [
+    { date: true, message: 'Please enter a valid date' }
+  ]
+});
+
+export const skillSchema = createValidationSchema({
+  name: [
+    { required: true, message: 'Skill name is required' },
+    { minLength: 2, message: 'Skill name must be at least 2 characters' }
+  ],
+  level: [
+    { required: true, message: 'Skill level is required' }
+  ],
+  yearsOfExperience: [
+    { min: 0, message: 'Years of experience must be a positive number' }
+  ]
+});
+
+export const trainingSchema = createValidationSchema({
+  title: [
+    { required: true, message: 'Training title is required' },
+    { minLength: 2, message: 'Title must be at least 2 characters' }
+  ],
+  provider: [
+    { required: true, message: 'Provider is required' }
+  ],
+  startDate: [
+    { required: true, message: 'Start date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  cost: [
+    { min: 0, message: 'Cost must be a positive number' }
+  ]
+});
+
+export const assetSchema = createValidationSchema({
+  name: [
+    { required: true, message: 'Asset name is required' },
+    { minLength: 2, message: 'Asset name must be at least 2 characters' }
+  ],
+  type: [
+    { required: true, message: 'Asset type is required' }
+  ],
+  assignedDate: [
+    { required: true, message: 'Assigned date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ]
+});
+
+export const disciplinarySchema = createValidationSchema({
+  type: [
+    { required: true, message: 'Disciplinary type is required' }
+  ],
+  date: [
+    { required: true, message: 'Date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  description: [
+    { required: true, message: 'Description is required' },
+    { minLength: 10, message: 'Description must be at least 10 characters' }
+  ],
+  severity: [
+    { required: true, message: 'Severity is required' }
+  ]
+});
+
+export const promotionSchema = createValidationSchema({
+  type: [
+    { required: true, message: 'Promotion type is required' }
+  ],
+  fromDate: [
+    { required: true, message: 'From date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  newPosition: [
+    { required: true, message: 'New position is required' }
+  ],
+  reason: [
+    { required: true, message: 'Reason is required' },
+    { minLength: 10, message: 'Reason must be at least 10 characters' }
+  ],
+  newSalary: [
+    { min: 0, message: 'New salary must be a positive number' }
+  ]
+});
+
+export const salaryHistorySchema = createValidationSchema({
+  amount: [
+    { required: true, message: 'Amount is required' },
+    { min: 0, message: 'Amount must be a positive number' }
+  ],
+  effectiveDate: [
+    { required: true, message: 'Effective date is required' },
+    { date: true, message: 'Please enter a valid date' }
+  ],
+  reason: [
+    { required: true, message: 'Reason is required' },
+    { minLength: 5, message: 'Reason must be at least 5 characters' }
+  ]
+});
+
+export const dependantSchema = createValidationSchema({
+  firstName: [
+    { required: true, message: 'First name is required' },
+    { minLength: 2, message: 'First name must be at least 2 characters' }
+  ],
+  lastName: [
+    { required: true, message: 'Last name is required' },
+    { minLength: 2, message: 'Last name must be at least 2 characters' }
+  ],
+  relationship: [
+    { required: true, message: 'Relationship is required' }
+  ]
+});
