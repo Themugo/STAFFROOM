@@ -1992,6 +1992,130 @@ enum ConversionStatus {
   NOT_CONVERTED
 }
 
+// Phase 42: Committee Tracking
+enum CommitteeType {
+  GOVERNANCE
+  AUDIT
+  REMUNERATION
+  NOMINATION
+  ETHICS
+  DIVERSITY
+  HEALTH_SAFETY
+  TRAINING
+  SOCIAL
+  OTHER
+}
+
+enum CommitteeRole {
+  CHAIR
+  VICE_CHAIR
+  SECRETARY
+  TREASURER
+  MEMBER
+  EX_OFFICIO
+}
+
+enum CommitteeMeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+// Phase 43: Project-based Reporting
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ProjectPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// Phase 44: Exam & Assessment Tracking
+enum AssessmentType {
+  EXAM
+  QUIZ
+  PRACTICAL
+  PROJECT
+  PRESENTATION
+  INTERVIEW
+  OTHER
+}
+
+enum AssessmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  GRADED
+  CANCELLED
+}
+
+// Phase 45: Fraud Detection Enhancements
+enum FraudRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FraudCaseStatus {
+  REPORTED
+  UNDER_INVESTIGATION
+  SUBSTANTIATED
+  UNFOUNDED
+  RESOLVED
+  ESCALATED
+}
+
+// Phase 46: Attrition Risk Prediction
+enum AttritionRiskLevel {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum AttritionRiskFactor {
+  SALARY
+  WORK_LIFE_BALANCE
+  MANAGEMENT
+  CAREER_GROWTH
+  COMPANY_CULTURE
+  WORKLOAD
+  COMMUTE
+  BENEFITS
+  OTHER
+}
+
+// Phase 47: Burnout Detection
+enum BurnoutRiskLevel {
+  HEALTHY
+  MILD
+  MODERATE
+  SEVERE
+  CRITICAL
+}
+
+enum BurnoutIndicator {
+  WORK_HOURS
+  ABSENTEEISM
+  PERFORMANCE_DECLINE
+  ENGAGEMENT_DROP
+  STRESS_REPORTS
+  SOCIAL_WITHDRAWAL
+  OTHER
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -2381,6 +2505,36 @@ model Employee {
   internsAsMentor Intern[]
   programEvaluationsAsEvaluator ProgramEvaluation[]
   
+  // Phase 42: Committee Tracking Relations
+  committeesAsChair Committee[]
+  committeeMemberships CommitteeMember[]
+  committeeAttendances CommitteeAttendance[]
+  
+  // Phase 43: Project-based Reporting Relations
+  projectsAsManager Project[]
+  projectMemberships ProjectMember[]
+  projectTasksAsAssignee ProjectTask[]
+  
+  // Phase 44: Exam & Assessment Tracking Relations
+  assessmentResults AssessmentResult[]
+  
+  // Phase 45: Fraud Detection Enhancements Relations
+  fraudAlerts FraudAlert[]
+  fraudCases FraudCase[]
+  fraudAlertsAsInvestigator FraudAlert[]
+  fraudCasesAsInvestigator FraudCase[]
+  
+  // Phase 46: Attrition Risk Prediction Relations
+  attritionRisks AttritionRisk[]
+  attritionInterventions AttritionIntervention[]
+  attritionRisksAsReviewer AttritionRisk[]
+  attritionInterventionsAsAssignedTo AttritionIntervention[]
+  
+  // Phase 47: Burnout Detection Relations
+  burnoutRisks BurnoutRisk[]
+  wellnessEnrollments WellnessEnrollment[]
+  burnoutRisksAsReviewer BurnoutRisk[]
+  
   @@index([employeeId])
   @@index([email])
   @@index([companyId])
@@ -2482,6 +2636,12 @@ model Department {
   
   // Phase 40: Team Model Relations
   teams Team[]
+  
+  // Phase 42: Committee Tracking Relations
+  committees Committee[]
+  
+  // Phase 43: Project-based Reporting Relations
+  projects Project[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -3935,6 +4095,36 @@ model Company {
   interns Intern[]
   programEvaluations ProgramEvaluation[]
   conversionTracking ConversionTracking[]
+  
+  // Phase 42: Committee Tracking Relations
+  committees Committee[]
+  committeeMembers CommitteeMember[]
+  committeeMeetings CommitteeMeeting[]
+  committeeAttendances CommitteeAttendance[]
+  committeeDecisions CommitteeDecision[]
+  
+  // Phase 43: Project-based Reporting Relations
+  projects Project[]
+  projectMembers ProjectMember[]
+  projectTasks ProjectTask[]
+  projectMilestones ProjectMilestone[]
+  
+  // Phase 44: Exam & Assessment Tracking Relations
+  assessments Assessment[]
+  assessmentResults AssessmentResult[]
+  
+  // Phase 45: Fraud Detection Enhancements Relations
+  fraudAlerts FraudAlert[]
+  fraudCases FraudCase[]
+  
+  // Phase 46: Attrition Risk Prediction Relations
+  attritionRisks AttritionRisk[]
+  attritionInterventions AttritionIntervention[]
+  
+  // Phase 47: Burnout Detection Relations
+  burnoutRisks BurnoutRisk[]
+  wellnessPrograms WellnessProgram[]
+  wellnessEnrollments WellnessEnrollment[]
   
   @@index([tenantId])
   @@index([code])
@@ -10642,4 +10832,773 @@ model ConversionTracking {
   @@index([programId])
   @@index([internId])
   @@index([conversionStatus])
+}
+
+// Phase 42: Committee Tracking
+model Committee {
+  id              String              @id @default(cuid())
+  companyId       String
+  departmentId    String?
+  
+  // Committee Details
+  name            String
+  description     String?
+  committeeType   CommitteeType
+  
+  // Leadership
+  chairId         String?
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  // Period
+  startDate       DateTime
+  endDate         DateTime?
+  
+  // Mandate
+  mandate         String?
+  responsibilities Json?
+  
+  // Settings
+  meetingFrequency String?
+  quorum          Int?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("CommitteeCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?         @relation("CommitteeDepartment", fields: [departmentId], references: [id])
+  chair           Employee?           @relation("CommitteeChair", fields: [chairId], references: [id])
+  members         CommitteeMember[]
+  meetings        CommitteeMeeting[]
+  decisions       CommitteeDecision[]
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([committeeType])
+  @@index([active])
+}
+
+model CommitteeMember {
+  id              String              @id @default(cuid())
+  companyId       String
+  committeeId     String
+  employeeId      String
+  
+  // Member Details
+  role            CommitteeRole
+  joinDate        DateTime
+  leaveDate       DateTime?
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  // Voting Rights
+  votingRights    Boolean             @default(true)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("CommitteeMemberCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  committee       Committee           @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeCommitteeMember", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([committeeId, employeeId])
+  @@index([companyId])
+  @@index([committeeId])
+  @@index([employeeId])
+  @@index([active])
+}
+
+model CommitteeMeeting {
+  id              String              @id @default(cuid())
+  companyId       String
+  committeeId     String
+  
+  // Meeting Details
+  title           String
+  description     String?
+  
+  // Schedule
+  scheduledDate   DateTime
+  startTime       DateTime
+  endTime         DateTime?
+  
+  // Location
+  location        String?
+  virtualMeeting  Boolean             @default(false)
+  meetingLink     String?
+  
+  // Status
+  status          CommitteeMeetingStatus @default(SCHEDULED)
+  
+  // Attendance
+  minQuorum       Int?
+  actualAttendees Int?
+  
+  // Agenda
+  agenda          Json?
+  
+  // Minutes
+  minutes         String?
+  minutesFile     String?
+  
+  // Actions
+  actionItems     Json?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("CommitteeMeetingCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  committee       Committee           @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  attendance      CommitteeAttendance[]
+  
+  @@index([companyId])
+  @@index([committeeId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model CommitteeAttendance {
+  id              String              @id @default(cuid())
+  companyId       String
+  meetingId       String
+  employeeId      String
+  
+  // Attendance Details
+  attended        Boolean
+  attendanceStatus String?
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("CommitteeAttendanceCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  meeting         CommitteeMeeting    @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeCommitteeAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([meetingId, employeeId])
+  @@index([companyId])
+  @@index([meetingId])
+  @@index([employeeId])
+}
+
+model CommitteeDecision {
+  id              String              @id @default(cuid())
+  companyId       String
+  committeeId     String
+  meetingId       String?
+  
+  // Decision Details
+  title           String
+  description     String?
+  
+  // Decision
+  decisionType    String
+  decision        String
+  voteCount       Json?               // { for: number, against: number, abstain: number }
+  
+  // Date
+  decisionDate    DateTime
+  
+  // Implementation
+  implementationStatus String?
+  implementationDate DateTime?
+  
+  // Documents
+  decisionFile    String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("CommitteeDecisionCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  committee       Committee           @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  meeting         CommitteeMeeting?   @relation("MeetingCommitteeDecision", fields: [meetingId], references: [id])
+  
+  @@index([companyId])
+  @@index([committeeId])
+  @@index([meetingId])
+  @@index([decisionDate])
+}
+
+// Phase 43: Project-based Reporting
+model Project {
+  id              String              @id @default(cuid())
+  companyId       String
+  departmentId    String?
+  
+  // Project Details
+  name            String
+  description     String?
+  
+  // Status
+  status          ProjectStatus        @default(PLANNING)
+  priority        ProjectPriority     @default(MEDIUM)
+  
+  // Timeline
+  startDate       DateTime
+  endDate         DateTime?
+  actualEndDate   DateTime?
+  
+  // Budget
+  budget          Float?
+  actualCost      Float?
+  currency        String              @default("USD")
+  
+  // Leadership
+  managerId       String?
+  
+  // Progress
+  progress        Float               @default(0)
+  
+  // Goals
+  goals           Json?
+  
+  // Risks
+  risks           Json?
+  
+  // Documents
+  projectCharter  String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ProjectCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?         @relation("ProjectDepartment", fields: [departmentId], references: [id])
+  manager         Employee?           @relation("ProjectManager", fields: [managerId], references: [id])
+  members         ProjectMember[]
+  tasks           ProjectTask[]
+  milestones      ProjectMilestone[]
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([priority])
+  @@index([startDate])
+}
+
+model ProjectMember {
+  id              String              @id @default(cuid())
+  companyId       String
+  projectId       String
+  employeeId      String
+  
+  // Member Details
+  role            String
+  joinDate        DateTime
+  leaveDate       DateTime?
+  
+  // Responsibilities
+  responsibilities Json?
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  // Allocation
+  allocationPercentage Float?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ProjectMemberCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeProjectMember", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, employeeId])
+  @@index([companyId])
+  @@index([projectId])
+  @@index([employeeId])
+  @@index([active])
+}
+
+model ProjectTask {
+  id              String              @id @default(cuid())
+  companyId       String
+  projectId       String
+  
+  // Task Details
+  title           String
+  description     String?
+  
+  // Status
+  status          ProjectStatus        @default(PLANNING)
+  priority        ProjectPriority     @default(MEDIUM)
+  
+  // Assignment
+  assignedTo      String?
+  
+  // Timeline
+  startDate       DateTime
+  dueDate         DateTime
+  completedDate   DateTime?
+  
+  // Progress
+  progress        Float               @default(0)
+  
+  // Dependencies
+  dependsOn       Json?               // Array of task IDs
+  
+  // Documents
+  attachments     Json?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ProjectTaskCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee        Employee?           @relation("ProjectTaskAssignee", fields: [assignedTo], references: [id])
+  
+  @@index([companyId])
+  @@index([projectId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model ProjectMilestone {
+  id              String              @id @default(cuid())
+  companyId       String
+  projectId       String
+  
+  // Milestone Details
+  title           String
+  description     String?
+  
+  // Date
+  targetDate      DateTime
+  achievedDate    DateTime?
+  
+  // Status
+  achieved        Boolean             @default(false)
+  
+  // Deliverables
+  deliverables    Json?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ProjectMilestoneCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([projectId])
+  @@index([targetDate])
+  @@index([achieved])
+}
+
+// Phase 44: Exam & Assessment Tracking
+model Assessment {
+  id              String              @id @default(cuid())
+  companyId       String
+  courseId        String?
+  
+  // Assessment Details
+  title           String
+  description     String?
+  assessmentType  AssessmentType
+  
+  // Schedule
+  scheduledDate   DateTime
+  duration        Int?                // In minutes
+  
+  // Status
+  status          AssessmentStatus    @default(SCHEDULED)
+  
+  // Scoring
+  maxScore        Float
+  passingScore    Float
+  
+  // Instructions
+  instructions    String?
+  
+  // Settings
+  allowRetake     Boolean             @default(false)
+  maxAttempts     Int?
+  
+  // Documents
+  assessmentFile  String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("AssessmentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  course          Course?             @relation("CourseAssessment", fields: [courseId], references: [id])
+  results         AssessmentResult[]
+  
+  @@index([companyId])
+  @@index([courseId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model AssessmentResult {
+  id              String              @id @default(cuid())
+  companyId       String
+  assessmentId    String
+  employeeId      String
+  
+  // Result Details
+  score           Float
+  maxScore        Float
+  percentage      Float
+  
+  // Status
+  passed          Boolean
+  
+  // Attempt
+  attemptNumber   Int                 @default(1)
+  
+  // Date
+  takenDate       DateTime
+  
+  // Duration
+  durationMinutes Int?
+  
+  // Feedback
+  feedback        String?
+  
+  // Documents
+  answerFile      String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("AssessmentResultCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  assessment      Assessment          @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeAssessmentResult", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([assessmentId])
+  @@index([employeeId])
+  @@index([takenDate])
+}
+
+// Phase 45: Fraud Detection Enhancements
+model FraudAlert {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  
+  // Alert Details
+  alertType       String
+  description     String
+  
+  // Risk Assessment
+  riskLevel       FraudRiskLevel
+  confidenceScore Float?
+  
+  // Detection
+  detectedDate    DateTime            @default(now())
+  detectionMethod String?
+  
+  // Context
+  context         Json?
+  
+  // Investigation
+  caseId          String?
+  investigatedBy  String?
+  investigatedAt  DateTime?
+  
+  // Resolution
+  resolved        Boolean             @default(false)
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  
+  // Evidence
+  evidenceFiles   Json?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("FraudAlertCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?           @relation("EmployeeFraudAlert", fields: [employeeId], references: [id], onDelete: Cascade)
+  case            FraudCase?          @relation("AlertFraudCase", fields: [caseId], references: [id])
+  investigator    Employee?           @relation("FraudAlertInvestigator", fields: [investigatedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([riskLevel])
+  @@index([detectedDate])
+  @@index([resolved])
+}
+
+model FraudCase {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  
+  // Case Details
+  caseNumber      String              @unique
+  title           String
+  description     String
+  
+  // Status
+  status          FraudCaseStatus     @default(REPORTED)
+  
+  // Risk Assessment
+  riskLevel       FraudRiskLevel
+  estimatedImpact Float?
+  
+  // Timeline
+  reportedDate    DateTime            @default(now())
+  investigationStartDate DateTime?
+  resolvedDate    DateTime?
+  
+  // Investigation
+  investigatorId  String?
+  investigationNotes String?
+  
+  // Findings
+  findings        String?
+  substantiated    Boolean?
+  
+  // Resolution
+  resolution      String?
+  disciplinaryAction String?
+  
+  // Documents
+  evidenceFiles   Json?
+  reportFile      String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("FraudCaseCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?           @relation("EmployeeFraudCase", fields: [employeeId], references: [id], onDelete: Cascade)
+  alerts          FraudAlert[]
+  investigator    Employee?           @relation("FraudCaseInvestigator", fields: [investigatorId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([reportedDate])
+}
+
+// Phase 46: Attrition Risk Prediction
+model AttritionRisk {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Risk Assessment
+  riskLevel       AttritionRiskLevel
+  riskScore       Float
+  
+  // Risk Factors
+  riskFactors     Json?               // Array of risk factors with scores
+  
+  // Primary Risk Factor
+  primaryFactor   AttritionRiskFactor?
+  
+  // Prediction
+  predictionDate  DateTime            @default(now())
+  predictionHorizon Int?             // Days until potential departure
+  
+  // Historical Data
+  tenure          Int?                // In days
+  performanceRating Float?
+  
+  // Mitigation
+  mitigationPlan  String?
+  mitigationActions Json?
+  
+  // Follow-up
+  reviewedBy      String?
+  reviewDate      DateTime?
+  reviewNotes     String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("AttritionRiskCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeAttritionRisk", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer        Employee?           @relation("AttritionRiskReviewer", fields: [reviewedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([riskLevel])
+  @@index([predictionDate])
+}
+
+model AttritionIntervention {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  riskId          String?
+  
+  // Intervention Details
+  interventionType String
+  description     String
+  
+  // Timeline
+  plannedDate     DateTime
+  completedDate   DateTime?
+  
+  // Status
+  status          ProjectStatus        @default(PLANNING)
+  
+  // Outcome
+  outcome         String?
+  effectiveness   Float?
+  
+  // Assignment
+  assignedTo      String?
+  
+  // Notes
+  notes           String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("AttritionInterventionCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeAttritionIntervention", fields: [employeeId], references: [id], onDelete: Cascade)
+  risk            AttritionRisk?       @relation("RiskAttritionIntervention", fields: [riskId], references: [id])
+  assignedToUser  Employee?           @relation("AttritionInterventionAssignedTo", fields: [assignedTo], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([riskId])
+  @@index([plannedDate])
+  @@index([status])
+}
+
+// Phase 47: Burnout Detection
+model BurnoutRisk {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Risk Assessment
+  riskLevel       BurnoutRiskLevel
+  riskScore       Float
+  
+  // Indicators
+  indicators      Json?               // Array of indicators with scores
+  
+  // Primary Indicator
+  primaryIndicator BurnoutIndicator?
+  
+  // Assessment
+  assessmentDate  DateTime            @default(now())
+  
+  // Metrics
+  avgWorkHours    Float?
+  overtimeHours   Float?
+  absenteeismRate Float?
+  performanceTrend String?
+  
+  // Self-reported
+  stressLevel     Int?                // 1-10 scale
+  satisfactionLevel Int?              // 1-10 scale
+  
+  // Recommendations
+  recommendations Json?
+  
+  // Follow-up
+  reviewedBy      String?
+  reviewDate      DateTime?
+  reviewNotes     String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("BurnoutRiskCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeBurnoutRisk", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer        Employee?           @relation("BurnoutRiskReviewer", fields: [reviewedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([riskLevel])
+  @@index([assessmentDate])
+}
+
+model WellnessProgram {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Program Details
+  name            String
+  description     String?
+  
+  // Type
+  programType     String
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  // Schedule
+  startDate       DateTime
+  endDate         DateTime?
+  
+  // Capacity
+  capacity        Int?
+  currentEnrollment Int              @default(0)
+  
+  // Resources
+  resources       Json?
+  
+  // Documents
+  programDocument String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("WellnessProgramCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  enrollments     WellnessEnrollment[]
+  
+  @@index([companyId])
+  @@index([active])
+  @@index([startDate])
+}
+
+model WellnessEnrollment {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  programId       String
+  
+  // Enrollment Details
+  enrollmentDate  DateTime
+  completionDate  DateTime?
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  // Progress
+  progress        Float               @default(0)
+  
+  // Feedback
+  satisfaction    Int?                // 1-10 scale
+  feedback        String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("WellnessEnrollmentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeWellnessEnrollment", fields: [employeeId], references: [id], onDelete: Cascade)
+  program         WellnessProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  
+  @@unique([programId, employeeId])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([programId])
+  @@index([active])
 }

@@ -68,6 +68,7 @@ app.use('/api/medium-priority-gaps', require('./routes/mediumPriorityGaps'));
 app.use('/api/low-priority-gaps', require('./routes/lowPriorityGaps'));
 app.use('/api/high-priority-features', require('./routes/highPriorityFeatures'));
 app.use('/api/medium-priority-features', require('./routes/mediumPriorityFeatures'));
+app.use('/api/low-priority-features', require('./routes/lowPriorityFeatures'));
 
 // Health check
 app.get('/health', (req, res) => {
