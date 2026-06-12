@@ -723,6 +723,59 @@ enum InsightType {
   COMPLIANCE
 }
 
+// Phase 19: Advanced Platform Features Enums
+enum WorkflowNodeType {
+  START
+  END
+  APPROVAL
+  CONDITION
+  NOTIFICATION
+  TASK
+  PARALLEL
+  MERGE
+  TIMER
+  WEBHOOK
+  SCRIPT
+}
+
+enum RuleConditionType {
+  EQUALS
+  NOT_EQUALS
+  GREATER_THAN
+  LESS_THAN
+  CONTAINS
+  NOT_CONTAINS
+  IN
+  NOT_IN
+  BETWEEN
+  REGEX
+}
+
+enum RuleActionType {
+  NOTIFY
+  APPROVE
+  REJECT
+  ASSIGN
+  UPDATE_STATUS
+  SEND_EMAIL
+  TRIGGER_WEBHOOK
+  EXECUTE_SCRIPT
+  CREATE_RECORD
+  UPDATE_RECORD
+}
+
+enum OAuthGrantType {
+  AUTHORIZATION_CODE
+  CLIENT_CREDENTIALS
+  REFRESH_TOKEN
+}
+
+enum ApiDocumentationStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -1840,6 +1893,7 @@ model WorkflowTemplate {
   
   steps       WorkflowStep[]
   executions  WorkflowExecution[]
+  workflowNodes WorkflowNode[] @relation("WorkflowNodes")
   
   @@index([category])
   @@index([isActive])
@@ -2213,6 +2267,10 @@ model Company {
   // Executive Command Center Relations
   executiveAlerts   ExecutiveAlert[]
   executiveInsights ExecutiveInsight[]
+  
+  // Phase 19: Advanced Platform Features Relations
+  businessRules     BusinessRule[]
+  oAuthClients      OAuthClient[]
   
   @@index([tenantId])
   @@index([code])
@@ -3750,4 +3808,188 @@ model ExecutiveInsight {
   @@index([companyId])
   @@index([type])
   @@index([periodStart])
+}
+
+// Phase 19: Advanced Platform Features Models
+model WorkflowNode {
+  id              String          @id @default(cuid())
+  workflowId      String
+  
+  type            WorkflowNodeType
+  name            String
+  description     String?
+  
+  positionX       Int
+  positionY       Int
+  
+  config          Json?           // Node-specific configuration
+  conditions      Json?           // Conditions for this node
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  workflow        Workflow        @relation("WorkflowNodes", fields: [workflowId], references: [id], onDelete: Cascade)
+  connections     WorkflowConnection[] @relation("NodeConnections")
+  
+  @@index([workflowId])
+  @@index([type])
+}
+
+model WorkflowConnection {
+  id              String        @id @default(cuid())
+  workflowId      String
+  
+  fromNodeId      String
+  toNodeId        String
+  
+  condition       Json?         // Connection condition
+  
+  createdAt       DateTime      @default(now())
+  
+  workflow        Workflow      @relation("WorkflowNodes", fields: [workflowId], references: [id], onDelete: Cascade)
+  fromNode        WorkflowNode  @relation("NodeConnections", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode          WorkflowNode  @relation("NodeConnections", fields: [toNodeId], references: [id], onDelete: Cascade)
+  
+  @@index([workflowId])
+  @@index([fromNodeId])
+  @@index([toNodeId])
+}
+
+model BusinessRule {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  name            String
+  description     String          @db.Text
+  
+  category        String          // ATTENDANCE, LEAVE, PAYROLL, PERFORMANCE, etc.
+  
+  enabled         Boolean         @default(true)
+  
+  conditions      Json            // Rule conditions
+  actions         Json            // Rule actions
+  
+  priority        Int             @default(0)
+  
+  triggeredCount  Int             @default(0)
+  lastTriggered   DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([category])
+  @@index([enabled])
+  @@index([priority])
+}
+
+model RuleExecutionLog {
+  id              String        @id @default(cuid())
+  ruleId          String
+  
+  matched         Boolean
+  context         Json          // Execution context
+  results         Json?         // Execution results
+  
+  executedAt      DateTime      @default(now())
+  
+  @@index([ruleId])
+  @@index([executedAt])
+}
+
+model OAuthClient {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  name            String
+  description     String?
+  
+  clientId        String          @unique
+  clientSecret    String
+  
+  redirectUris    Json            // Array of redirect URIs
+  grantTypes      Json            // Array of grant types
+  scopes          Json            // Array of scopes
+  
+  enabled         Boolean         @default(true)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([clientId])
+  @@index([enabled])
+}
+
+model OAuthToken {
+  id              String        @id @default(cuid())
+  clientId        String
+  userId          String?
+  
+  accessToken     String
+  refreshToken    String?
+  
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  
+  scope           Json?
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([clientId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ApiDocumentation {
+  id              String                @id @default(cuid())
+  
+  path            String
+  method          String
+  description     String                @db.Text
+  
+  parameters      Json?
+  requestBody     Json?
+  responseBody    Json?
+  
+  status          ApiDocumentationStatus @default(DRAFT)
+  version         String
+  
+  category        String                // EMPLOYEES, PAYROLL, ATTENDANCE, etc.
+  
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  @@index([path])
+  @@index([method])
+  @@index([category])
+  @@index([status])
+}
+
+model DeveloperAccount {
+  id              String        @id @default(cuid())
+  
+  email           String        @unique
+  name            String
+  
+  organization    String?
+  
+  apiKey          String        @unique
+  apiSecret       String
+  
+  scopes          Json?         // Array of scopes
+  rateLimit       Int           @default(1000)
+  
+  enabled         Boolean       @default(true)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([email])
+  @@index([apiKey])
+  @@index([enabled])
 }
