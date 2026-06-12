@@ -1672,6 +1672,104 @@ enum BenefitsInKindStatus {
   EXPIRED
 }
 
+// Phase 30: Low Priority Gaps - Employee Relations
+enum AwardType {
+  EMPLOYEE_OF_THE_MONTH
+  EMPLOYEE_OF_THE_YEAR
+  PERFORMANCE_AWARD
+  INNOVATION_AWARD
+  LEADERSHIP_AWARD
+  TEAM_AWARD
+  LONG_SERVICE_AWARD
+  SAFETY_AWARD
+  CUSTOMER_EXCELLENCE
+  OTHER
+}
+
+enum AwardStatus {
+  NOMINATED
+  APPROVED
+  AWARDED
+  REJECTED
+}
+
+enum EngagementType {
+  SURVEY
+  FEEDBACK_SESSION
+  TOWN_HALL
+  FOCUS_GROUP
+  ONE_ON_ONE
+  PULSE_CHECK
+  OTHER
+}
+
+enum EngagementStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum SentimentType {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  MIXED
+}
+
+// Phase 30: Workforce Communication
+enum AcknowledgementStatus {
+  PENDING
+  ACKNOWLEDGED
+  EXPIRED
+  WAIVED
+}
+
+enum TemplateType {
+  EMAIL
+  NOTIFICATION
+  DOCUMENT
+  FORM
+  LETTER
+  ANNOUNCEMENT
+  OTHER
+}
+
+enum TemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  INACTIVE
+}
+
+// Phase 30: Workforce Governance
+enum PolicyStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  SUPERSEDED
+}
+
+enum SoDConflictType {
+  INCOMPATIBLE_DUTIES
+  CONFLICT_OF_INTEREST
+  SEGREGATION_ISSUE
+  APPROVAL_CONFLICT
+  ACCESS_CONFLICT
+  OTHER
+}
+
+enum SoDConflictStatus {
+  IDENTIFIED
+  ASSESSING
+  MITIGATING
+  RESOLVED
+  ACCEPTED
+  ESCALATED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -1983,6 +2081,25 @@ model Employee {
   
   // Phase 29: Benefits Valuation Relations
   benefitsInKind BenefitsInKind[]
+  
+  // Phase 30: Low Priority Gaps - Employee Relations Relations
+  employeeAwards EmployeeAward[]
+  awardsAsAwarder EmployeeAward[]
+  awardsAsNominator EmployeeAward[]
+  awardsAsApprover EmployeeAward[]
+  employeeEngagements EmployeeEngagement[]
+  engagementsAsFacilitator EmployeeEngagement[]
+  employeeSentiments EmployeeSentiment[]
+  sentimentReviews EmployeeSentiment[]
+  
+  // Phase 30: Workforce Communication Relations
+  policyAcknowledgements PolicyAcknowledgement[]
+  acknowledgementExemptions PolicyAcknowledgement[]
+  
+  // Phase 30: Workforce Governance Relations
+  sodConflicts SoDConflict[]
+  sodConflictsAssigned SoDConflict[]
+  sodConflictsAccepted SoDConflict[]
   
   @@index([employeeId])
   @@index([email])
@@ -3464,6 +3581,19 @@ model Company {
   
   // Phase 29: Benefits Valuation Relations
   benefitsInKind BenefitsInKind[]
+  
+  // Phase 30: Low Priority Gaps - Employee Relations Relations
+  employeeAwards EmployeeAward[]
+  employeeEngagements EmployeeEngagement[]
+  employeeSentiments EmployeeSentiment[]
+  
+  // Phase 30: Workforce Communication Relations
+  policyAcknowledgements PolicyAcknowledgement[]
+  communicationTemplates CommunicationTemplate[]
+  
+  // Phase 30: Workforce Governance Relations
+  policyGovernances PolicyGovernance[]
+  sodConflicts SoDConflict[]
   
   @@index([tenantId])
   @@index([code])
@@ -8379,4 +8509,367 @@ model BenefitsInKind {
   @@index([employeeId])
   @@index([status])
   @@index([effectiveFrom])
+}
+
+// Phase 30: Low Priority Gaps - Employee Relations
+model EmployeeAward {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Award Details
+  awardType       AwardType
+  status          AwardStatus     @default(NOMINATED)
+  
+  // Award Information
+  awardName       String
+  description     String?
+  
+  // Period
+  awardDate       DateTime
+  period          String?         // MONTH, QUARTER, YEAR
+  year            Int?
+  
+  // Recognition
+  awardedBy       String?
+  awardedAt       DateTime?
+  citation        String?
+  
+  // Rewards
+  rewardType      String?         // CASH, GIFT, CERTIFICATE, OTHER
+  rewardValue     Float?
+  currency        String          @default("USD")
+  
+  // Nomination
+  nominatedBy     String?
+  nominationDate  DateTime?
+  nominationReason String?
+  
+  // Approval
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Documents
+  certificateFile  String?         // File URL
+  photoFile       String?         // File URL
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("EmployeeAwardCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation("EmployeeAwardEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  awarder         Employee?       @relation("EmployeeAwardAwarder", fields: [awardedBy], references: [id])
+  nominator       Employee?       @relation("EmployeeAwardNominator", fields: [nominatedBy], references: [id])
+  approver        Employee?       @relation("EmployeeAwardApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([awardType])
+  @@index([status])
+  @@index([awardDate])
+}
+
+model EmployeeEngagement {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  
+  // Engagement Details
+  engagementType  EngagementType
+  status          EngagementStatus @default(SCHEDULED)
+  
+  // Engagement Information
+  title           String
+  description     String?
+  
+  // Schedule
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  
+  // Participation
+  participants    Json?           // Array of employee IDs
+  attendanceCount Int?
+  
+  // Feedback
+  rating          Float?
+  feedback        String?
+  comments        Json?           // Array of comments
+  
+  // Facilitator
+  facilitatorId   String?
+  
+  // Location/Platform
+  location        String?
+  platform        String?         // ONLINE, IN_PERSON, HYBRID
+  
+  // Documents
+  materials       String?         // File URL
+  report          String?         // File URL
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("EmployeeEngagementCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?       @relation("EmployeeEngagementEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  facilitator     Employee?       @relation("EmployeeEngagementFacilitator", fields: [facilitatorId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([engagementType])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model EmployeeSentiment {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Sentiment Details
+  sentimentType   SentimentType
+  sentimentScore  Float           // -100 to 100
+  
+  // Context
+  category        String?         // JOB_SATISFACTION, MANAGEMENT, CULTURE, COMPENSATION, WORK_LIFE_BALANCE, OTHER
+  source          String?         // SURVEY, FEEDBACK, REVIEW, PULSE_CHECK, OTHER
+  
+  // Feedback
+  comments        String?
+  tags            Json?           // Array of tags
+  
+  // Period
+  recordedDate    DateTime        @default(now())
+  period          String?         // WEEK, MONTH, QUARTER, YEAR
+  
+  // Follow-up
+  actionRequired  Boolean         @default(false)
+  actionTaken     String?
+  actionDate      DateTime?
+  
+  // Review
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("EmployeeSentimentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation("EmployeeSentimentEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer        Employee?       @relation("EmployeeSentimentReviewer", fields: [reviewedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([sentimentType])
+  @@index([recordedDate])
+}
+
+// Phase 30: Workforce Communication
+model PolicyAcknowledgement {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String
+  policyId        String
+  
+  // Acknowledgement Details
+  status          AcknowledgementStatus @default(PENDING)
+  
+  // Policy Information
+  policyName      String
+  policyVersion   String
+  
+  // Timeline
+  issuedDate      DateTime
+  dueDate         DateTime
+  acknowledgedDate DateTime?
+  
+  // Verification
+  ipAddress       String?
+  userAgent       String?
+  
+  // Exemption
+  exemptionReason String?
+  exemptionApprovedBy String?
+  exemptionApprovedAt DateTime?
+  
+  // Reminders
+  reminderSent    Boolean         @default(false)
+  reminderCount   Int             @default(0)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("PolicyAcknowledgementCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation("EmployeePolicyAcknowledgement", fields: [employeeId], references: [id], onDelete: Cascade)
+  exemptionApprover Employee?     @relation("PolicyAcknowledgementExemptionApprover", fields: [exemptionApprovedBy], references: [id])
+  
+  @@unique([companyId, employeeId, policyId, policyVersion])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([policyId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model CommunicationTemplate {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  // Template Details
+  templateType    TemplateType
+  status          TemplateStatus  @default(DRAFT)
+  
+  // Template Information
+  name            String
+  description     String?
+  
+  // Content
+  subject         String?
+  body            String
+  variables       Json?           // Array of variable names
+  
+  // Category
+  category        String?         // ONBOARDING, POLICY, ANNOUNCEMENT, REMINDER, OTHER
+  
+  // Usage
+  usageCount      Int             @default(0)
+  lastUsedAt      DateTime?
+  
+  // Approval
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Version
+  version         String          @default("1.0")
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("CommunicationTemplateCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  approver        Employee?       @relation("CommunicationTemplateApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([templateType])
+  @@index([status])
+  @@index([category])
+}
+
+// Phase 30: Workforce Governance
+model PolicyGovernance {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  // Policy Details
+  status          PolicyStatus    @default(DRAFT)
+  
+  // Policy Information
+  policyName      String
+  policyCode      String?
+  category        String?
+  description     String?
+  
+  // Version
+  version         String          @default("1.0")
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  reviewDate      DateTime?
+  
+  // Content
+  content         String
+  attachments     Json?           // Array of file URLs
+  
+  // Approval
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Owner
+  ownerId         String?
+  
+  // Compliance
+  complianceRequired Boolean      @default(true)
+  complianceCategory String?
+  
+  // Distribution
+  distributionList Json?           // Array of employee/role IDs
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("PolicyGovernanceCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  approver        Employee?       @relation("PolicyGovernanceApprover", fields: [approvedBy], references: [id])
+  owner           Employee?       @relation("PolicyGovernanceOwner", fields: [ownerId], references: [id])
+  acknowledgements PolicyAcknowledgement[]
+  
+  @@unique([companyId, policyCode, version])
+  @@index([companyId])
+  @@index([status])
+  @@index([category])
+  @@index([effectiveDate])
+}
+
+model SoDConflict {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  
+  // Conflict Details
+  conflictType    SoDConflictType
+  status          SoDConflictStatus @default(IDENTIFIED)
+  
+  // Conflict Information
+  title           String
+  description     String
+  impact          String?
+  
+  // Risk Assessment
+  riskLevel       RiskSeverity
+  probability     Float?          // 0-100
+  
+  // Conflicting Roles/Duties
+  role1           String?
+  role2           String?
+  duty1           String?
+  duty2           String?
+  
+  // Detection
+  detectedDate    DateTime        @default(now())
+  detectionMethod String?
+  
+  // Mitigation
+  mitigationPlan  String?
+  mitigationActions Json?
+  mitigationStatus String?
+  mitigationDeadline DateTime?
+  
+  // Assignment
+  assignedTo      String?
+  
+  // Resolution
+  resolvedDate    DateTime?
+  resolutionNotes String?
+  
+  // Approval
+  acceptedBy      String?
+  acceptedAt      DateTime?
+  acceptanceReason String?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  company         Company         @relation("SoDConflictCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?       @relation("EmployeeSoDConflict", fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedToUser  Employee?       @relation("SoDConflictAssignedTo", fields: [assignedTo], references: [id])
+  accepter        Employee?       @relation("SoDConflictAccepter", fields: [acceptedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([conflictType])
+  @@index([status])
+  @@index([detectedDate])
 }

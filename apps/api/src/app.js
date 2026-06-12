@@ -65,6 +65,7 @@ app.use('/api/reconciliation', require('./routes/reconciliation'));
 app.use('/api/governance', require('./routes/governance'));
 app.use('/api/high-priority-gaps', require('./routes/highPriorityGaps'));
 app.use('/api/medium-priority-gaps', require('./routes/mediumPriorityGaps'));
+app.use('/api/low-priority-gaps', require('./routes/lowPriorityGaps'));
 
 // Health check
 app.get('/health', (req, res) => {
