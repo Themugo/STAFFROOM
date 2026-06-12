@@ -433,6 +433,54 @@ enum PromotionStatus {
   PENDING
 }
 
+// Learning & Development Enums
+enum CourseType {
+  INTERNAL
+  EXTERNAL
+  COMPLIANCE
+  CERTIFICATION
+  SKILL_BUILDING
+  ONBOARDING
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  RETIRED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  DROPPED
+  EXPIRED
+}
+
+enum LearningPathType {
+  ROLE_BASED
+  SKILL_BASED
+  DEPARTMENT_BASED
+  CUSTOM
+}
+
+enum CertificationStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  PENDING
+}
+
+enum AssessmentType {
+  QUIZ
+  EXAM
+  PROJECT
+  PRACTICAL
+  SURVEY
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -586,6 +634,13 @@ model Employee {
   feedbacksReceived Feedback[]      @relation("FeedbackReceived")
   appraisals        Appraisal[]
   promotionRecommendations PromotionRecommendation[]
+  
+  // Learning & Development Relations
+  instructedCourses Course[]       @relation("CourseInstructor")
+  enrollments       Enrollment[]
+  learningPathEnrollments LearningPathEnrollment[]
+  certifications    Certification[]
+  employeeSkills    EmployeeSkill[]
   
   @@index([employeeId])
   @@index([email])
@@ -1857,6 +1912,12 @@ model Company {
   reviewCycles      ReviewCycle[]
   promotionRecommendations PromotionRecommendation[]
   
+  // Learning & Development Relations
+  courses           Course[]
+  learningPaths     LearningPath[]
+  certifications    Certification[]
+  skills            Skill[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -2287,4 +2348,335 @@ model PromotionRecommendation {
   @@index([employeeId])
   @@index([status])
   @@index([effectiveDate])
+}
+
+// Learning & Development Models
+model Course {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  type            CourseType
+  status          CourseStatus  @default(DRAFT)
+  
+  title           String
+  description     String        @db.Text
+  category        String?
+  tags            Json?         // ["leadership", "technical", etc.]
+  
+  duration        Int?          // Duration in minutes
+  difficulty      String?       // BEGINNER, INTERMEDIATE, ADVANCED
+  
+  instructorId    String?
+  prerequisites   Json?         // Array of course IDs
+  
+  thumbnail       String?
+  materials       Json?         // Course materials/links
+  
+  publishedAt     DateTime?
+  expiresAfter    Int?          // Days after enrollment when course expires
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  instructor      Employee?     @relation("CourseInstructor", fields: [instructorId], references: [id])
+  modules         CourseModule[]
+  enrollments     Enrollment[]
+  learningPaths   LearningPathCourse[]
+  assessments     Assessment[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+  @@index([category])
+  @@index([instructorId])
+}
+
+model CourseModule {
+  id              String        @id @default(cuid())
+  courseId        String
+  
+  title           String
+  description     String?
+  content         String        @db.Text
+  order           Int
+  
+  duration        Int?          // Duration in minutes
+  materials       Json?         // Module materials/links
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons         Lesson[]
+  
+  @@index([courseId])
+  @@index([order])
+}
+
+model Lesson {
+  id              String        @id @default(cuid())
+  moduleId        String
+  
+  title           String
+  content         String        @db.Text
+  order           Int
+  
+  duration        Int?          // Duration in minutes
+  videoUrl        String?
+  materials       Json?         // Lesson materials/links
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  module          CourseModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress        LessonProgress[]
+  
+  @@index([moduleId])
+  @@index([order])
+}
+
+model Enrollment {
+  id              String          @id @default(cuid())
+  courseId        String
+  employeeId      String
+  
+  status          EnrollmentStatus @default(ENROLLED)
+  
+  enrolledAt      DateTime        @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  expiresAt       DateTime?
+  
+  progress        Float           @default(0) // 0-100
+  score           Float?          // Final score if applicable
+  
+  certificateUrl  String?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([courseId, employeeId])
+  @@index([courseId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([completedAt])
+}
+
+model LessonProgress {
+  id              String        @id @default(cuid())
+  lessonId        String
+  employeeId      String
+  
+  completed       Boolean       @default(false)
+  completedAt     DateTime?
+  
+  timeSpent       Int?          // Time spent in seconds
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  lesson          Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  @@unique([lessonId, employeeId])
+  @@index([lessonId])
+  @@index([employeeId])
+}
+
+model LearningPath {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  type            LearningPathType
+  name            String
+  description     String?
+  
+  targetRole      String?        // For role-based paths
+  targetSkills    Json?          // For skill-based paths
+  targetDepartment String?       // For department-based paths
+  
+  duration        Int?          // Estimated duration in days
+  isMandatory     Boolean        @default(false)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  courses         LearningPathCourse[]
+  enrollments     LearningPathEnrollment[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([targetRole])
+  @@index([targetDepartment])
+}
+
+model LearningPathCourse {
+  id              String        @id @default(cuid())
+  learningPathId  String
+  courseId        String
+  
+  order           Int
+  isMandatory     Boolean       @default(true)
+  
+  createdAt       DateTime      @default(now())
+  
+  learningPath    LearningPath  @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  @@unique([learningPathId, courseId])
+  @@index([learningPathId])
+  @@index([courseId])
+}
+
+model LearningPathEnrollment {
+  id              String          @id @default(cuid())
+  learningPathId  String
+  employeeId      String
+  
+  status          EnrollmentStatus @default(ENROLLED)
+  
+  enrolledAt      DateTime        @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  progress        Float           @default(0) // 0-100
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  learningPath    LearningPath    @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  
+  @@unique([learningPathId, employeeId])
+  @@index([learningPathId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model Certification {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  courseId        String?
+  
+  name            String
+  description     String?
+  issuingBody     String?
+  
+  credentialId    String?             // External credential ID
+  certificateUrl  String?
+  
+  status          CertificationStatus @default(ACTIVE)
+  issuedDate      DateTime
+  expiryDate      DateTime?
+  
+  skills          Json?               // Skills certified
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  course          Course?             @relation(fields: [courseId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([courseId])
+  @@index([status])
+  @@index([expiryDate])
+}
+
+model Assessment {
+  id              String        @id @default(cuid())
+  courseId        String
+  
+  type            AssessmentType
+  title           String
+  description     String?
+  
+  passingScore    Float         @default(70)
+  timeLimit       Int?          // Time limit in minutes
+  attemptsAllowed Int           @default(3)
+  
+  questions       Json          // Assessment questions
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attempts        AssessmentAttempt[]
+  
+  @@index([courseId])
+  @@index([type])
+}
+
+model AssessmentAttempt {
+  id              String        @id @default(cuid())
+  assessmentId    String
+  employeeId      String
+  
+  attemptNumber   Int
+  score           Float
+  passed          Boolean
+  
+  answers         Json          // Student answers
+  startedAt       DateTime
+  completedAt     DateTime?
+  timeSpent       Int?          // Time spent in seconds
+  
+  createdAt       DateTime      @default(now())
+  
+  assessment      Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  
+  @@index([assessmentId])
+  @@index([employeeId])
+  @@index([passed])
+}
+
+model Skill {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  name            String
+  category        String?
+  description     String?
+  
+  proficiency     Json?         // Proficiency levels
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeSkills  EmployeeSkill[]
+  
+  @@index([companyId])
+  @@index([category])
+}
+
+model EmployeeSkill {
+  id              String        @id @default(cuid())
+  employeeId      String
+  skillId         String
+  
+  level           String        // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  yearsExperience Int?
+  
+  certified       Boolean       @default(false)
+  certifiedAt     DateTime?
+  
+  source          String?       // Where skill was acquired (course, experience, etc.)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  skill           Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  
+  @@unique([employeeId, skillId])
+  @@index([employeeId])
+  @@index([skillId])
+  @@index([level])
 }
