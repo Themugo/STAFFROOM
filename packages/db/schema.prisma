@@ -118,6 +118,123 @@ enum PromotionType {
   TITLE_CHANGE
 }
 
+// Payroll & Compliance Enums
+enum PayrollStatus {
+  DRAFT
+  CALCULATED
+  PENDING_APPROVAL
+  APPROVED
+  PROCESSED
+  PAID
+  CANCELLED
+}
+
+enum SalaryComponentType {
+  BASIC
+  ALLOWANCE
+  OVERTIME
+  BONUS
+  COMMISSION
+  DEDUCTION
+  TAX
+  BENEFIT
+}
+
+enum DeductionType {
+  TAX
+  NHIF
+  NSSF
+  PENSION
+  LOAN
+  ADVANCE
+  INSURANCE
+  OTHER
+}
+
+enum PayrollFrequency {
+  MONTHLY
+  BI_WEEKLY
+  WEEKLY
+  DAILY
+}
+
+// Leave Management 2.0 Enums
+enum LeaveAccrualType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  MANUAL
+}
+
+enum LeaveBalanceType {
+  CREDIT
+  DEBIT
+  ADJUSTMENT
+  CARRY_FORWARD
+}
+
+// Attendance Intelligence Enums
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  NIGHT
+  ROTATING
+  FLEXIBLE
+}
+
+enum AttendanceMethod {
+  GPS
+  IP_RESTRICTED
+  BIOMETRIC
+  MANUAL
+  QR_CODE
+  NFC
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  LOST
+}
+
+// Recruitment Module Enums
+enum VacancyStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ON_HOLD
+  FILLED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  OFFER_EXTENDED
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  REJECTED
+  HIRED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum OnboardingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+}
+
 model User {
   id                String   @id @default(cuid())
   email             String   @unique
@@ -209,6 +326,21 @@ model Employee {
   promotionHistory  PromotionHistory[]
   salaryHistory     SalaryHistory[]
   dependants        Dependant[]
+  
+  // Payroll Relations
+  payslips          Payslip[]
+  
+  // Leave Management Relations
+  leaveBalances     LeaveBalance[]
+  leaveTransactions LeaveTransaction[]
+  
+  // Attendance Intelligence Relations
+  employeeShifts    EmployeeShift[]
+  registeredDevices RegisteredDevice[]
+  attendanceLocations AttendanceLocation[]
+  
+  // Recruitment Relations
+  onboarding        Onboarding[]
   
   @@index([employeeId])
   @@index([email])
@@ -718,4 +850,386 @@ model Dependant {
   
   @@index([employeeId])
   @@index([isEmergency])
+}
+
+// Payroll & Compliance Engine Models
+
+model PayrollRun {
+  id          String          @id @default(cuid())
+  name        String
+  period      String         // e.g., "January 2024"
+  startDate   DateTime
+  endDate     DateTime
+  status      PayrollStatus   @default(DRAFT)
+  frequency   PayrollFrequency @default(MONTHLY)
+  
+  totalGross  Float?
+  totalNet    Float?
+  totalTax    Float?
+  totalDeductions Float?
+  
+  processedBy String?
+  approvedBy  String?
+  approvedAt  DateTime?
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  payslips    Payslip[]
+  
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model SalaryComponent {
+  id          String            @id @default(cuid())
+  name        String
+  type        SalaryComponentType
+  amount      Float
+  isPercentage Boolean           @default(false)
+  description String?
+  isActive    Boolean           @default(true)
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  @@index([type])
+  @@index([isActive])
+}
+
+model Deduction {
+  id          String        @id @default(cuid())
+  name        String
+  type        DeductionType
+  amount      Float
+  isPercentage Boolean       @default(false)
+  description String?
+  isActive    Boolean       @default(true)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@index([type])
+  @@index([isActive])
+}
+
+model Payslip {
+  id          String      @id @default(cuid())
+  employeeId  String
+  payrollRunId String
+  period      String
+  
+  grossSalary Float
+  netSalary   Float
+  totalTax    Float
+  totalDeductions Float
+  
+  earnings    Json        // Breakdown of earnings
+  deductions  Json        // Breakdown of deductions
+  taxDetails  Json        // Tax breakdown (PAYE, NHIF, NSSF)
+  
+  generatedAt DateTime
+  pdfUrl      String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollRun  PayrollRun  @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([payrollRunId])
+  @@index([period])
+}
+
+// Leave Management 2.0 Models
+
+model LeaveBalance {
+  id          String           @id @default(cuid())
+  employeeId  String
+  leaveType   LeaveType
+  year        Int
+  balance     Float            @default(0)
+  used        Float            @default(0)
+  carriedForward Float         @default(0)
+  
+  accrualRate Float?           // Days per month/year
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([employeeId, leaveType, year])
+  @@index([employeeId])
+  @@index([leaveType])
+}
+
+model LeaveAccrualRule {
+  id          String           @id @default(cuid())
+  leaveType   LeaveType
+  accrualType LeaveAccrualType
+  rate        Float            // Days per period
+  maxBalance  Float?           // Maximum balance allowed
+  carryForwardPercentage Float? // Percentage that can be carried forward
+  expiryMonths Int?            // Months after which carried leave expires
+  
+  isActive    Boolean          @default(true)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  @@index([leaveType])
+  @@index([isActive])
+}
+
+model PublicHoliday {
+  id          String   @id @default(cuid())
+  name        String
+  date        DateTime
+  isRecurring Boolean  @default(false)
+  description String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([date])
+  @@index([isRecurring])
+}
+
+model LeaveTransaction {
+  id          String          @id @default(cuid())
+  employeeId  String
+  leaveBalanceId String
+  type        LeaveBalanceType
+  amount      Float
+  description String?
+  referenceId String?         // Leave request ID
+  
+  createdAt   DateTime        @default(now())
+  
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveBalance LeaveBalance @relation(fields: [leaveBalanceId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([leaveBalanceId])
+  @@index([type])
+}
+
+// Attendance Intelligence Models
+
+model ShiftSchedule {
+  id          String    @id @default(cuid())
+  name        String
+  type        ShiftType
+  startTime   DateTime
+  endTime     DateTime
+  breakDuration Int?     // In minutes
+  location    String?
+  
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([type])
+  @@index([isActive])
+}
+
+model EmployeeShift {
+  id          String        @id @default(cuid())
+  employeeId  String
+  shiftId     String
+  effectiveDate DateTime
+  endDate     DateTime?
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift       ShiftSchedule @relation(fields: [shiftId], references: [id])
+  
+  @@index([employeeId])
+  @@index([effectiveDate])
+}
+
+model AttendanceRule {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // LATE_ARRIVAL, EARLY_DEPARTURE, ABSENCE, OVERTIME
+  condition   Json     // Rules and conditions
+  action      String   // What happens when rule is triggered
+  
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([type])
+  @@index([isActive])
+}
+
+model RegisteredDevice {
+  id          String         @id @default(cuid())
+  employeeId  String
+  deviceId    String
+  deviceName  String
+  deviceType  String         // MOBILE, TABLET, DESKTOP, BIOMETRIC
+  status      DeviceStatus   @default(ACTIVE)
+  
+  lastUsed    DateTime?
+  ipAddress   String?
+  location    Json?          // GPS coordinates
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  employee    Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([deviceId])
+  @@index([status])
+}
+
+model AttendanceLocation {
+  id          String   @id @default(cuid())
+  employeeId  String
+  latitude    Float
+  longitude   Float
+  accuracy    Float?
+  timestamp   DateTime
+  method      AttendanceMethod
+  
+  createdAt   DateTime @default(now())
+  
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([timestamp])
+}
+
+// Recruitment Module Models
+
+model Vacancy {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  departmentId String
+  positionId  String
+  location    String?
+  employmentType String     // FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP
+  salaryMin   Float?
+  salaryMax   Float?
+  requirements String?
+  responsibilities String?
+  benefits    String?
+  status      VacancyStatus @default(DRAFT)
+  publishedAt DateTime?
+  deadline    DateTime?
+  positions   Int           @default(1)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  department  Department    @relation(fields: [departmentId], references: [id])
+  position    Position      @relation(fields: [positionId], references: [id])
+  applications Application[]
+  
+  @@index([departmentId])
+  @@index([status])
+  @@index([deadline])
+}
+
+model Candidate {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  location    String?
+  resumeUrl   String?
+  linkedInUrl String?
+  portfolioUrl String?
+  notes       String?
+  
+  source      String?  // REFERRAL, LINKEDIN, JOB_BOARD, WEBSITE, OTHER
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  applications Application[]
+  
+  @@index([email])
+  @@index([source])
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  vacancyId   String
+  candidateId String
+  status      ApplicationStatus @default(APPLIED)
+  
+  coverLetter String?
+  expectedSalary Float?
+  availableDate DateTime?
+  
+  appliedAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  vacancy     Vacancy           @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  interviews  Interview[]
+  
+  @@unique([vacancyId, candidateId])
+  @@index([vacancyId])
+  @@index([candidateId])
+  @@index([status])
+}
+
+model Interview {
+  id          String          @id @default(cuid())
+  applicationId String
+  type        String          // PHONE, VIDEO, IN_PERSON, TECHNICAL
+  status      InterviewStatus @default(SCHEDULED)
+  
+  scheduledDate DateTime
+  duration    Int?            // In minutes
+  location    String?
+  notes       String?
+  feedback    String?
+  rating      Float?          // 1-5 scale
+  
+  interviewerId String?
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  application Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  @@index([applicationId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model Onboarding {
+  id          String          @id @default(cuid())
+  employeeId  String
+  status      OnboardingStatus @default(PENDING)
+  
+  startDate   DateTime
+  endDate     DateTime?
+  
+  tasks       Json            // Onboarding checklist
+  completedTasks Json?
+  
+  mentorId    String?
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([status])
 }

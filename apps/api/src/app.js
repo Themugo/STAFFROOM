@@ -36,8 +36,12 @@ app.use('/api/employees', require('./routes/employee360'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/positions', require('./routes/positions'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/attendance', require('./routes/attendanceIntelligence'));
 app.use('/api/leaves', require('./routes/leaves'));
+app.use('/api/leaves', require('./routes/leaveManagement'));
 app.use('/api/workflows', require('./routes/workflows'));
+app.use('/api/payroll', require('./routes/payroll'));
+app.use('/api/recruitment', require('./routes/recruitment'));
 
 // Health check
 app.get('/health', (req, res) => {
