@@ -235,6 +235,55 @@ enum OnboardingStatus {
   DELAYED
 }
 
+// Universal Workflow Engine Enums
+enum WorkflowCategory {
+  LEAVE
+  PROCUREMENT
+  RECRUITMENT
+  EXPENSE
+  APPROVAL
+  CUSTOM
+}
+
+enum WorkflowTriggerType {
+  MANUAL
+  AUTOMATIC
+  SCHEDULED
+  EVENT_BASED
+}
+
+enum StepType {
+  APPROVAL
+  NOTIFICATION
+  TASK
+  CONDITION
+  PARALLEL
+  SEQUENTIAL
+  TIMER
+  WEBHOOK
+  EMAIL
+  SMS
+  SYSTEM_ACTION
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  FAILED
+  CANCELLED
+}
+
+enum ExecutionStatus {
+  STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  ON_HOLD
+}
+
 model User {
   id                String   @id @default(cuid())
   email             String   @unique
@@ -1231,5 +1280,144 @@ model Onboarding {
   employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   
   @@index([employeeId])
+  @@index([status])
+}
+
+// Universal Workflow Engine Models
+
+model WorkflowTemplate {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  category    WorkflowCategory
+  version     Int               @default(1)
+  isActive    Boolean           @default(true)
+  
+  triggerType WorkflowTriggerType @default(MANUAL)
+  triggerConfig Json?           // Trigger configuration
+  
+  createdBy   String
+  updatedBy   String?
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  steps       WorkflowStep[]
+  executions  WorkflowExecution[]
+  
+  @@index([category])
+  @@index([isActive])
+  @@index([version])
+}
+
+model WorkflowStep {
+  id          String          @id @default(cuid())
+  templateId  String
+  name        String
+  description String?
+  type        StepType
+  order       Int
+  
+  config      Json            // Step configuration (approval rules, conditions, etc.)
+  
+  isRequired  Boolean         @default(true)
+  canSkip     Boolean         @default(false)
+  
+  timeoutMinutes Int?         // Timeout for this step
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  template    WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  executions  WorkflowStepExecution[]
+  
+  @@index([templateId])
+  @@index([order])
+  @@index([type])
+}
+
+model WorkflowExecution {
+  id          String            @id @default(cuid())
+  templateId  String
+  category    WorkflowCategory
+  
+  status      ExecutionStatus   @default(STARTED)
+  
+  initiatedBy String
+  entityId    String?           // Reference to the entity (leaveId, expenseId, etc.)
+  entityType  String?           // Type of entity (LEAVE, EXPENSE, etc.)
+  
+  currentStep Int               @default(0)
+  totalSteps  Int
+  
+  metadata    Json             // Additional execution data
+  result      Json?            // Final result
+  
+  startedAt   DateTime          @default(now())
+  completedAt DateTime?
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  template    WorkflowTemplate @relation(fields: [templateId], references: [id])
+  stepExecutions WorkflowStepExecution[]
+  approvals   WorkflowApproval[]
+  
+  @@index([templateId])
+  @@index([category])
+  @@index([status])
+  @@index([entityId])
+  @@index([initiatedBy])
+}
+
+model WorkflowStepExecution {
+  id          String      @id @default(cuid())
+  executionId String
+  stepId      String
+  
+  status      StepStatus @default(PENDING)
+  
+  assignedTo  String?    // User or role assigned to this step
+  assignedType String?   // USER or ROLE
+  
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  metadata    Json        // Step-specific data
+  result      Json?       // Step result
+  
+  comments    String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  step        WorkflowStep @relation(fields: [stepId], references: [id])
+  
+  @@index([executionId])
+  @@index([stepId])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+model WorkflowApproval {
+  id          String      @id @default(cuid())
+  executionId String
+  stepExecutionId String?
+  
+  approverId  String
+  status      String      // APPROVED, REJECTED, PENDING
+  
+  comments    String?
+  
+  approvedAt  DateTime?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  
+  @@index([executionId])
+  @@index([approverId])
   @@index([status])
 }

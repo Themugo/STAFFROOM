@@ -14,6 +14,7 @@ import Payroll from './pages/Payroll';
 import LeaveManagement from './pages/LeaveManagement';
 import AttendanceIntelligence from './pages/AttendanceIntelligence';
 import Recruitment from './pages/Recruitment';
+import WorkflowBuilder from './pages/WorkflowBuilder';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -84,6 +85,11 @@ function App() {
               <Route path="/recruitment" element={
                 <ProtectedRoute>
                   <Recruitment />
+                </ProtectedRoute>
+              } />
+              <Route path="/workflow-builder" element={
+                <ProtectedRoute>
+                  <WorkflowBuilder />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<Navigate to="/" replace />} />

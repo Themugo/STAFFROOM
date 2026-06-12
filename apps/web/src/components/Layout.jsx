@@ -9,6 +9,7 @@ import {
   Calendar,
   MapPin,
   Briefcase,
+  GitBranch,
   LogOut,
   Menu,
   X
@@ -29,6 +30,7 @@ export default function Layout() {
     { name: 'Leave Management', href: '/leave-management', icon: Calendar },
     { name: 'Attendance Intelligence', href: '/attendance-intelligence', icon: MapPin },
     { name: 'Recruitment', href: '/recruitment', icon: Briefcase },
+    { name: 'Workflow Builder', href: '/workflow-builder', icon: GitBranch },
   ];
 
   return (

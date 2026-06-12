@@ -40,6 +40,7 @@ app.use('/api/attendance', require('./routes/attendanceIntelligence'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/leaves', require('./routes/leaveManagement'));
 app.use('/api/workflows', require('./routes/workflows'));
+app.use('/api/workflows', require('./routes/universalWorkflow'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/recruitment', require('./routes/recruitment'));
 
