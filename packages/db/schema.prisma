@@ -640,6 +640,63 @@ enum ComplianceType {
   SOCIAL_SECURITY
 }
 
+// Enterprise SaaS Architecture Enums
+enum SSOProvider {
+  SAML
+  OKTA
+  AZURE_AD
+  GOOGLE_WORKSPACE
+  AUTH0
+  CUSTOM
+}
+
+enum SCIMStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum CurrencyCode {
+  KES
+  UGX
+  TZS
+  RWF
+  ZAR
+  NGN
+  GHS
+  USD
+  EUR
+  GBP
+}
+
+enum PluginCategory {
+  PAYROLL
+  RECRUITMENT
+  TRAINING
+  REPORTING
+  INTEGRATION
+  AUTOMATION
+  ANALYTICS
+  CUSTOM
+}
+
+enum PluginStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -2117,6 +2174,16 @@ model Company {
   webhooks          Webhook[]
   companyCompliances CompanyCompliance[]
   
+  // Enterprise SaaS Architecture Relations
+  whiteLabelConfig  WhiteLabelConfig?
+  ssoConfig         SSOConfig?
+  scimConfig        SCIMConfig?
+  apiKeys           ApiKey[]
+  
+  // StaffRoom Ecosystem Relations
+  pluginInstallations PluginInstallation[]
+  pluginReviews     PluginReview[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -3402,4 +3469,205 @@ model CompanyCompliance {
   @@index([companyId])
   @@index([complianceRuleId])
   @@index([isEnabled])
+}
+
+// Enterprise SaaS Architecture Models
+model WhiteLabelConfig {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  logoUrl         String?
+  faviconUrl      String?
+  primaryColor    String?
+  secondaryColor  String?
+  
+  customDomain    String?
+  customEmail     String?
+  
+  brandingName    String?
+  brandingTagline String?
+  
+  cssOverrides    Json?
+  customScripts   Json?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId])
+  @@index([companyId])
+}
+
+model SSOConfig {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  provider        SSOProvider
+  enabled         Boolean       @default(false)
+  
+  metadataUrl     String?
+  certUrl         String?
+  entityId        String?
+  
+  config          Json?         // SSO-specific configuration
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId])
+  @@index([companyId])
+}
+
+model SCIMConfig {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  status          SCIMStatus    @default(PENDING)
+  
+  accessToken     String?
+  tokenUrl        String?
+  baseUrl         String?
+  
+  config          Json?         // SCIM-specific configuration
+  
+  lastSyncAt      DateTime?
+  lastError       String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId])
+  @@index([companyId])
+}
+
+model ApiKey {
+  id              String        @id @default(cuid())
+  companyId       String
+  createdBy       String?
+  
+  name            String
+  description     String?
+  
+  key             String        @unique
+  keyPrefix       String        @default("sk_")
+  
+  status          ApiKeyStatus  @default(ACTIVE)
+  
+  permissions     Json?         // API permissions
+  rateLimit       Int?          @default(1000)
+  
+  expiresAt       DateTime?
+  lastUsedAt      DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([key])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Currency {
+  id              String        @id @default(cuid())
+  
+  code            CurrencyCode
+  name            String
+  symbol          String
+  exchangeRate    Float         @default(1.0)
+  
+  isActive        Boolean       @default(true)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@unique([code])
+  @@index([code])
+  @@index([isActive])
+}
+
+// StaffRoom Ecosystem Models
+model Plugin {
+  id              String          @id @default(cuid())
+  
+  name            String
+  description     String          @db.Text
+  version         String
+  
+  category        PluginCategory
+  status          PluginStatus    @default(DRAFT)
+  
+  developerId     String
+  developerName   String
+  
+  logoUrl         String?
+  screenshots     Json?           // Array of screenshot URLs
+  
+  pricing         Json?           // Pricing information
+  features        Json?           // Plugin features
+  
+  documentationUrl String?
+  supportUrl      String?
+  
+  installCount    Int             @default(0)
+  rating          Float?
+  reviewCount     Int             @default(0)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  installations   PluginInstallation[]
+  reviews         PluginReview[]
+  
+  @@index([category])
+  @@index([status])
+  @@index([developerId])
+  @@index([installCount])
+}
+
+model PluginInstallation {
+  id              String        @id @default(cuid())
+  pluginId        String
+  companyId       String
+  
+  installedAt     DateTime      @default(now())
+  expiresAt       DateTime?
+  
+  config          Json?         // Installation-specific configuration
+  isEnabled       Boolean       @default(true)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  plugin          Plugin        @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  
+  @@unique([pluginId, companyId])
+  @@index([pluginId])
+  @@index([companyId])
+  @@index([isEnabled])
+}
+
+model PluginReview {
+  id              String        @id @default(cuid())
+  pluginId        String
+  companyId       String
+  
+  rating          Int
+  title           String
+  content         String       @db.Text
+  
+  createdAt       DateTime      @default(now())
+  
+  plugin          Plugin        @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  
+  @@unique([pluginId, companyId])
+  @@index([pluginId])
+  @@index([companyId])
 }
