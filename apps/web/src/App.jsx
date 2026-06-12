@@ -10,6 +10,10 @@ import Employees from './pages/Employees';
 import EmployeeProfile from './pages/EmployeeProfile';
 import Departments from './pages/Departments';
 import Attendance from './pages/Attendance';
+import Payroll from './pages/Payroll';
+import LeaveManagement from './pages/LeaveManagement';
+import AttendanceIntelligence from './pages/AttendanceIntelligence';
+import Recruitment from './pages/Recruitment';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -60,6 +64,26 @@ function App() {
               <Route path="/attendance" element={
                 <ProtectedRoute>
                   <Attendance />
+                </ProtectedRoute>
+              } />
+              <Route path="/payroll" element={
+                <ProtectedRoute>
+                  <Payroll />
+                </ProtectedRoute>
+              } />
+              <Route path="/leave-management" element={
+                <ProtectedRoute>
+                  <LeaveManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/attendance-intelligence" element={
+                <ProtectedRoute>
+                  <AttendanceIntelligence />
+                </ProtectedRoute>
+              } />
+              <Route path="/recruitment" element={
+                <ProtectedRoute>
+                  <Recruitment />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<Navigate to="/" replace />} />

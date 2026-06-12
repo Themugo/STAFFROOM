@@ -5,6 +5,10 @@ import {
   Users, 
   Building2, 
   CalendarClock, 
+  DollarSign,
+  Calendar,
+  MapPin,
+  Briefcase,
   LogOut,
   Menu,
   X
@@ -21,6 +25,10 @@ export default function Layout() {
     { name: 'Employees', href: '/employees', icon: Users },
     { name: 'Departments', href: '/departments', icon: Building2 },
     { name: 'Attendance', href: '/attendance', icon: CalendarClock },
+    { name: 'Payroll', href: '/payroll', icon: DollarSign },
+    { name: 'Leave Management', href: '/leave-management', icon: Calendar },
+    { name: 'Attendance Intelligence', href: '/attendance-intelligence', icon: MapPin },
+    { name: 'Recruitment', href: '/recruitment', icon: Briefcase },
   ];
 
   return (
