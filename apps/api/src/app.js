@@ -48,6 +48,7 @@ app.use('/api/security', require('./routes/security'));
 app.use('/api/audit', require('./routes/audit'));
 app.use('/api', require('./routes/company'));
 app.use('/api/intelligence', require('./routes/intelligence'));
+app.use('/api/performance', require('./routes/performance'));
 
 // Health check
 app.get('/health', (req, res) => {

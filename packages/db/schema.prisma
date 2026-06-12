@@ -364,6 +364,75 @@ enum BenchmarkCategory {
   SATISFACTION
 }
 
+// Performance Management Enums
+enum GoalType {
+  COMPANY
+  DEPARTMENT
+  TEAM
+  INDIVIDUAL
+}
+
+enum GoalStatus {
+  DRAFT
+  ACTIVE
+  IN_PROGRESS
+  ON_TRACK
+  AT_RISK
+  BEHIND
+  ACHIEVED
+  NOT_ACHIEVED
+  CANCELLED
+}
+
+enum KeyResultType {
+  METRIC
+  MILESTONE
+  BINARY
+}
+
+enum KeyResultStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ACHIEVED
+  NOT_ACHIEVED
+  ON_TRACK
+  AT_RISK
+}
+
+enum FeedbackType {
+  POSITIVE
+  CONSTRUCTIVE
+  MIXED
+  PRAISE
+  IMPROVEMENT
+}
+
+enum FeedbackDirection {
+  UPWARD
+  DOWNWARD
+  PEER
+  SELF
+  EXTERNAL
+}
+
+enum AppraisalStatus {
+  DRAFT
+  SELF_REVIEW
+  MANAGER_REVIEW
+  PEER_REVIEW
+  FINAL_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum PromotionStatus {
+  RECOMMENDED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PENDING
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -511,6 +580,12 @@ model Employee {
   
   // Workforce Intelligence Relations
   riskPredictions   EmployeeRiskPrediction[]
+  
+  // Performance Management Relations
+  feedbacksGiven    Feedback[]      @relation("FeedbackGiven")
+  feedbacksReceived Feedback[]      @relation("FeedbackReceived")
+  appraisals        Appraisal[]
+  promotionRecommendations PromotionRecommendation[]
   
   @@index([employeeId])
   @@index([email])
@@ -1775,6 +1850,13 @@ model Company {
   hiringForecasts    HiringForecast[]
   salaryBenchmarks  SalaryBenchmark[]
   
+  // Performance Management Relations
+  goals             Goal[]
+  feedbacks         Feedback[]
+  appraisals        Appraisal[]
+  reviewCycles      ReviewCycle[]
+  promotionRecommendations PromotionRecommendation[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -1956,4 +2038,253 @@ model SalaryBenchmark {
   @@index([positionId])
   @@index([departmentId])
   @@index([lastUpdated])
+}
+
+// Performance Management Models
+model Goal {
+  id              String        @id @default(cuid())
+  companyId       String
+  parentGoalId    String?
+  
+  type            GoalType
+  status          GoalStatus    @default(DRAFT)
+  
+  title           String
+  description     String?
+  
+  period          String        // "2024-Q1", "2024-01", etc.
+  startDate       DateTime
+  endDate         DateTime
+  
+  weight          Float         @default(1.0) // Weight for parent goal calculation
+  progress        Float         @default(0)   // 0-100 progress
+  
+  ownerId         String?       // Employee, Department, or Company owner
+  ownerType       String?       // "EMPLOYEE", "DEPARTMENT", "COMPANY"
+  
+  alignment       Json?         // Alignment with company strategy
+  metrics         Json?         // Custom metrics
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parentGoal      Goal?         @relation("GoalHierarchy", fields: [parentGoalId], references: [id], onDelete: SetNull)
+  subGoals        Goal[]        @relation("GoalHierarchy")
+  keyResults      KeyResult[]
+  feedbacks       Feedback[]
+  
+  @@index([companyId])
+  @@index([parentGoalId])
+  @@index([type])
+  @@index([status])
+  @@index([period])
+  @@index([ownerId])
+}
+
+model KeyResult {
+  id              String          @id @default(cuid())
+  goalId          String
+  
+  type            KeyResultType
+  status          KeyResultStatus @default(NOT_STARTED)
+  
+  title           String
+  description     String?
+  
+  targetValue     Float?
+  currentValue    Float?         @default(0)
+  unit            String?         // "%", "count", "hours", etc.
+  
+  startDate       DateTime
+  dueDate         DateTime
+  
+  weight          Float           @default(1.0) // Weight for goal calculation
+  confidence      Float?          // Confidence in achieving this KR
+  
+  progress        Float           @default(0) // 0-100 calculated progress
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  goal            Goal            @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  
+  @@index([goalId])
+  @@index([type])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Feedback {
+  id              String          @id @default(cuid())
+  companyId       String
+  goalId          String?
+  
+  fromEmployeeId  String
+  toEmployeeId    String
+  
+  type            FeedbackType
+  direction       FeedbackDirection
+  
+  subject         String
+  content         String          @db.Text
+  
+  rating          Int?            // 1-5 rating
+  tags            Json?           // ["leadership", "communication", etc.]
+  
+  isAnonymous     Boolean         @default(false)
+  isPublic        Boolean         @default(false)
+  
+  acknowledged    Boolean         @default(false)
+  acknowledgedAt  DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  goal            Goal?           @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  fromEmployee    Employee        @relation("FeedbackGiven", fields: [fromEmployeeId], references: [id], onDelete: Cascade)
+  toEmployee      Employee        @relation("FeedbackReceived", fields: [toEmployeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([goalId])
+  @@index([fromEmployeeId])
+  @@index([toEmployeeId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Appraisal {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String
+  reviewCycleId   String?
+  
+  status          AppraisalStatus @default(DRAFT)
+  
+  period          String          // "2024-Q1", "2024-01", etc.
+  startDate       DateTime
+  endDate         DateTime
+  
+  selfRating      Int?            // 1-5 self rating
+  managerRating   Int?            // 1-5 manager rating
+  finalRating     Int?            // 1-5 final rating
+  
+  strengths       Json?           // Array of strengths
+  improvements    Json?           // Array of improvement areas
+  achievements    Json?           // Key achievements
+  goals           Json?           // Goals for next period
+  
+  comments        Json?           // Comments from different stages
+  
+  approvedBy      String?         // Manager who approved
+  approvedAt      DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewCycle     ReviewCycle?    @relation(fields: [reviewCycleId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([reviewCycleId])
+  @@index([status])
+  @@index([period])
+}
+
+model ReviewCycle {
+  id              String          @id @default(cuid())
+  companyId       String
+  
+  name            String
+  description     String?
+  type            String          // "360", "SELF", "MANAGER", "PEER"
+  
+  period          String          // "2024-Q1", "2024-01", etc.
+  startDate       DateTime
+  endDate         DateTime
+  
+  status          String          @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
+  
+  participants    Json?           // Employee IDs participating
+  reviewers       Json?           // Reviewer assignments
+  
+  template        Json?           // Review template/questions
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  appraisals      Appraisal[]
+  responses       ReviewResponse[]
+  
+  @@index([companyId])
+  @@index([period])
+  @@index([status])
+}
+
+model ReviewResponse {
+  id              String          @id @default(cuid())
+  reviewCycleId   String
+  reviewerId      String
+  subjectId       String          // Employee being reviewed
+  
+  answers         Json            // Question answers
+  rating          Int?            // Overall rating
+  comments        String?         @db.Text
+  
+  submitted       Boolean         @default(false)
+  submittedAt     DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  reviewCycle     ReviewCycle     @relation(fields: [reviewCycleId], references: [id], onDelete: Cascade)
+  
+  @@index([reviewCycleId])
+  @@index([reviewerId])
+  @@index([subjectId])
+  @@index([submitted])
+}
+
+model PromotionRecommendation {
+  id              String          @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  status          PromotionStatus @default(RECOMMENDED)
+  
+  currentPosition String
+  recommendedPosition String
+  recommendedLevel String?
+  
+  effectiveDate   DateTime?
+  
+  justification   String          @db.Text
+  achievements    Json?           // Key achievements supporting promotion
+  skills          Json?           // Skills demonstrated
+  performance     Json?           // Performance metrics
+  
+  salaryIncrease  Json?           // { current, recommended, percentage }
+  benefits        Json?           // Additional benefits
+  
+  recommendedBy   String          // Manager recommending
+  reviewedBy      String?         // HR reviewer
+  approvedBy      String?         // Final approver
+  
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([effectiveDate])
 }
