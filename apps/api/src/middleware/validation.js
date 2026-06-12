@@ -53,9 +53,13 @@ const schemas = {
 
   department: Joi.object({
     name: Joi.string().required(),
+    code: Joi.string().optional(),
     description: Joi.string().optional(),
     location: Joi.string().optional(),
     budget: Joi.number().optional(),
+    parentDepartmentId: Joi.string().optional(),
+    headId: Joi.string().optional(),
+    settings: Joi.object().optional(),
   }),
 
   position: Joi.object({

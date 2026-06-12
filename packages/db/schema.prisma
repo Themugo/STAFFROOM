@@ -38,6 +38,26 @@ enum LeaveType {
   COMPASSIONATE
 }
 
+enum DepartmentStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum WorkflowStepType {
+  APPROVAL
+  NOTIFICATION
+  CONDITIONAL
+  AUTOMATIC
+}
+
 model User {
   id                String   @id @default(cuid())
   email             String   @unique
@@ -114,6 +134,7 @@ model Employee {
   position          Position       @relation(fields: [positionId], references: [id])
   manager           Employee?      @relation("ManagerRelation", fields: [managerId], references: [id])
   subordinates      Employee[]     @relation("ManagerRelation")
+  headOfDepartments Department[]  @relation("DepartmentHead")
   attendances       Attendance[]
   leaves            Leave[]
   performanceReviews PerformanceReview[]
@@ -126,19 +147,41 @@ model Employee {
 }
 
 model Department {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  location    String?
-  budget      Float?
+  id                String            @id @default(cuid())
+  name              String            @unique
+  code              String?           @unique
+  description       String?
+  location          String?
+  budget            Float?
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // Hierarchy fields
+  parentDepartmentId String?
+  level             Int               @default(0)
+  path              String?           // For hierarchical queries
   
-  employees   Employee[]
-  positions   Position[]
+  // Management
+  headId            String?           // Department head employee ID
+  status            DepartmentStatus  @default(ACTIVE)
+  
+  // Settings
+  settings          Json?             // Flexible settings for department-specific rules
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relations
+  parentDepartment  Department?       @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id], onDelete: SetNull)
+  subDepartments    Department[]      @relation("DepartmentHierarchy")
+  head              Employee?         @relation("DepartmentHead", fields: [headId], references: [id])
+  employees         Employee[]
+  positions         Position[]
+  workflows         DepartmentWorkflow[]
+  policies          DepartmentPolicy[]
   
   @@index([name])
+  @@index([parentDepartmentId])
+  @@index([level])
+  @@index([status])
 }
 
 model Position {
@@ -263,4 +306,124 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model DepartmentWorkflow {
+  id          String         @id @default(cuid())
+  departmentId String
+  name        String
+  description String?
+  entityType  String         // LEAVE, EXPENSE, PROMOTION, etc.
+  status      WorkflowStatus @default(DRAFT)
+  version     Int            @default(1)
+  
+  // Workflow configuration
+  config      Json           // Steps, conditions, rules
+  
+  createdBy   String
+  updatedBy   String?
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  department  Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  steps       WorkflowStep[]
+  executions  WorkflowExecution[]
+  
+  @@index([departmentId])
+  @@index([entityType])
+  @@index([status])
+}
+
+model WorkflowStep {
+  id          String           @id @default(cuid())
+  workflowId  String
+  name        String
+  description String?
+  type        WorkflowStepType
+  order       Int
+  
+  // Step configuration
+  config      Json             // Approvers, conditions, actions
+  isRequired  Boolean          @default(true)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  workflow    DepartmentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  @@index([workflowId])
+  @@index([order])
+}
+
+model WorkflowExecution {
+  id          String   @id @default(cuid())
+  workflowId  String
+  entityId    String   // ID of the entity being processed
+  entityType  String
+  status      WorkflowStatus @default(DRAFT)
+  currentStep Int      @default(0)
+  
+  // Execution data
+  data        Json     // Form data, request details
+  result      Json?    // Final result
+  
+  initiatedBy String
+  completedAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  workflow    DepartmentWorkflow @relation(fields: [workflowId], references: [id])
+  approvals   WorkflowApproval[]
+  
+  @@index([workflowId])
+  @@index([entityId])
+  @@index([status])
+}
+
+model WorkflowApproval {
+  id          String   @id @default(cuid())
+  executionId String
+  stepId      String
+  approverId  String
+  status      String   // PENDING, APPROVED, REJECTED
+  comments    String?
+  
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  
+  @@index([executionId])
+  @@index([approverId])
+  @@index([status])
+}
+
+model DepartmentPolicy {
+  id          String   @id @default(cuid())
+  departmentId String
+  name        String
+  description String?
+  type        String   // LEAVE_POLICY, WORK_HOURS, DRESS_CODE, etc.
+  content     Json     // Policy details, rules
+  
+  isActive    Boolean  @default(true)
+  effectiveFrom DateTime
+  effectiveTo DateTime?
+  
+  createdBy   String
+  updatedBy   String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  department  Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  
+  @@index([departmentId])
+  @@index([type])
+  @@index([isActive])
 }
