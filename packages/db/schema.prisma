@@ -333,6 +333,29 @@ enum PermissionScope {
   PERSONAL
 }
 
+// Multi-Company SaaS Enums
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+enum LocationType {
+  HEADQUARTERS
+  BRANCH
+  WAREHOUSE
+  RETAIL
+  OFFICE
+  REMOTE
+}
+
 model User {
   id                String   @id @default(cuid())
   email             String   @unique
@@ -380,6 +403,9 @@ model Session {
 model Employee {
   id                String         @id @default(cuid())
   userId            String?        @unique
+  companyId         String
+  branchId          String?
+  
   employeeId        String         @unique
   firstName         String
   lastName          String
@@ -414,6 +440,8 @@ model Employee {
   updatedAt         DateTime       @updatedAt
   
   user              User?          @relation(fields: [userId], references: [id])
+  company           Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch            Branch?        @relation(fields: [branchId], references: [id])
   department        Department     @relation(fields: [departmentId], references: [id])
   position          Position       @relation(fields: [positionId], references: [id])
   manager           Employee?      @relation("ManagerRelation", fields: [managerId], references: [id])
@@ -448,17 +476,23 @@ model Employee {
   
   // Recruitment Relations
   onboarding        Onboarding[]
+  managedBranches    Branch[]       @relation("BranchManager")
   
   @@index([employeeId])
   @@index([email])
+  @@index([companyId])
+  @@index([branchId])
   @@index([departmentId])
   @@index([positionId])
 }
 
 model Department {
   id                String            @id @default(cuid())
-  name              String            @unique
-  code              String?           @unique
+  companyId         String
+  branchId          String?
+  
+  name              String
+  code              String?
   description       String?
   location          String?
   budget            Float?
@@ -479,6 +513,8 @@ model Department {
   updatedAt         DateTime          @updatedAt
   
   // Relations
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch            Branch?           @relation(fields: [branchId], references: [id])
   parentDepartment  Department?       @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id], onDelete: SetNull)
   subDepartments    Department[]      @relation("DepartmentHierarchy")
   head              Employee?         @relation("DepartmentHead", fields: [headId], references: [id])
@@ -487,7 +523,9 @@ model Department {
   workflows         DepartmentWorkflow[]
   policies          DepartmentPolicy[]
   
-  @@index([name])
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([branchId])
   @@index([parentDepartmentId])
   @@index([level])
   @@index([status])
@@ -495,6 +533,7 @@ model Department {
 
 model Position {
   id           String   @id @default(cuid())
+  companyId    String
   title        String
   description String?
   departmentId String
@@ -504,9 +543,11 @@ model Position {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   department   Department @relation(fields: [departmentId], references: [id])
   employees    Employee[]
   
+  @@index([companyId])
   @@index([departmentId])
 }
 
@@ -1647,9 +1688,101 @@ model Tenant {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
+  companies   Company[]
   users       User[]
   
   @@index([domain])
   @@index([subdomain])
+  @@index([isActive])
+}
+
+model Company {
+  id          String        @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String        // Company code for identification
+  
+  status      CompanyStatus @default(TRIAL)
+  
+  logo        String?
+  website     String?
+  
+  industry    String?
+  size        String?       // SMALL, MEDIUM, LARGE
+  
+  address     Json?         // { street, city, state, country, postalCode }
+  contactInfo Json?         // { phone, email, website }
+  
+  settings    Json?         // Company-specific settings
+  
+  trialEndsAt DateTime?
+  subscriptionEndsAt DateTime?
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branches    Branch[]
+  locations   Location[]
+  employees   Employee[]
+  departments Department[]
+  
+  @@index([tenantId])
+  @@index([code])
+  @@index([status])
+}
+
+model Branch {
+  id          String        @id @default(cuid())
+  companyId   String
+  name        String
+  code        String        // Branch code
+  
+  status      BranchStatus  @default(ACTIVE)
+  
+  address     Json?         // { street, city, state, country, postalCode }
+  contactInfo Json?         // { phone, email }
+  
+  managerId   String?
+  
+  isHeadquarters Boolean    @default(false)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  manager     Employee?     @relation(fields: [managerId], references: [id])
+  employees   Employee[]
+  departments Department[]
+  
+  @@index([companyId])
+  @@index([code])
+  @@index([status])
+}
+
+model Location {
+  id          String        @id @default(cuid())
+  companyId   String
+  branchId    String?
+  
+  name        String
+  type        LocationType
+  
+  address     Json?         // { street, city, state, country, postalCode }
+  
+  coordinates Json?         // { latitude, longitude }
+  
+  capacity    Int?          // Maximum capacity
+  isActive    Boolean       @default(true)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch      Branch?       @relation(fields: [branchId], references: [id])
+  
+  @@index([companyId])
+  @@index([branchId])
+  @@index([type])
   @@index([isActive])
 }
