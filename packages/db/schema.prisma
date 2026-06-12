@@ -333,6 +333,37 @@ enum PermissionScope {
   PERSONAL
 }
 
+// Workforce Intelligence Enums
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PredictionType {
+  ATTRITION
+  ABSENTEEISM
+  BURNOUT
+  PRODUCTIVITY
+  HIRING
+  SALARY
+}
+
+enum ForecastPeriod {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BenchmarkCategory {
+  SALARY
+  BENEFITS
+  TURNOVER
+  PRODUCTIVITY
+  SATISFACTION
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -478,6 +509,9 @@ model Employee {
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
   
+  // Workforce Intelligence Relations
+  riskPredictions   EmployeeRiskPrediction[]
+  
   @@index([employeeId])
   @@index([email])
   @@index([companyId])
@@ -523,6 +557,11 @@ model Department {
   workflows         DepartmentWorkflow[]
   policies          DepartmentPolicy[]
   
+  // Workforce Intelligence Relations
+  productivityScores DepartmentProductivityScore[]
+  hiringForecasts    HiringForecast[]
+  salaryBenchmarks  SalaryBenchmark[]
+  
   @@unique([companyId, code])
   @@index([companyId])
   @@index([branchId])
@@ -546,6 +585,9 @@ model Position {
   company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   department   Department @relation(fields: [departmentId], references: [id])
   employees    Employee[]
+  
+  // Workforce Intelligence Relations
+  salaryBenchmarks SalaryBenchmark[]
   
   @@index([companyId])
   @@index([departmentId])
@@ -1727,6 +1769,12 @@ model Company {
   employees   Employee[]
   departments Department[]
   
+  // Workforce Intelligence Relations
+  riskPredictions   EmployeeRiskPrediction[]
+  productivityScores DepartmentProductivityScore[]
+  hiringForecasts    HiringForecast[]
+  salaryBenchmarks  SalaryBenchmark[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -1785,4 +1833,127 @@ model Location {
   @@index([branchId])
   @@index([type])
   @@index([isActive])
+}
+
+// Workforce Intelligence Models
+model EmployeeRiskPrediction {
+  id              String        @id @default(cuid())
+  employeeId      String
+  companyId       String
+  
+  predictionType  PredictionType
+  riskLevel       RiskLevel
+  riskScore       Float         // 0-100 score
+  
+  factors         Json?         // { tenure, salary, performance, attendance, etc. }
+  recommendations Json?         // Actionable recommendations
+  
+  predictedDate   DateTime?     // When the risk is predicted to materialize
+  confidence      Float         // Model confidence score (0-1)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([predictionType])
+  @@index([riskLevel])
+  @@index([predictedDate])
+}
+
+model DepartmentProductivityScore {
+  id              String        @id @default(cuid())
+  departmentId    String
+  companyId       String
+  
+  period          String        // "2024-Q1", "2024-01", etc.
+  
+  overallScore    Float         // 0-100 overall productivity score
+  efficiencyScore Float         // Efficiency metrics
+  qualityScore    Float         // Quality metrics
+  collaborationScore Float      // Team collaboration metrics
+  
+  metrics         Json          // { tasksCompleted, onTimeDelivery, errorRate, etc. }
+  benchmarks      Json?         // Industry benchmarks comparison
+  trends          Json?         // Historical trends
+  
+  rank            Int?          // Department ranking within company
+  percentile      Float?        // Percentile ranking
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  department      Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([departmentId, period])
+  @@index([companyId])
+  @@index([period])
+  @@index([overallScore])
+}
+
+model HiringForecast {
+  id              String        @id @default(cuid())
+  companyId       String
+  departmentId    String?
+  
+  forecastPeriod  ForecastPeriod
+  forecastDate    DateTime      // Start of forecast period
+  
+  predictedHires Int           // Predicted number of hires
+  confidence      Float         // Model confidence (0-1)
+  
+  breakdown       Json          // { byRole, byLevel, bySkill, etc. }
+  drivers         Json?         // { attrition, growth, expansion, etc. }
+  budgetImpact    Json?         // Estimated cost impact
+  
+  actualHires     Int?          // Actual hires (filled after period)
+  accuracy        Float?        // Forecast accuracy (calculated after period)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([forecastDate])
+  @@index([forecastPeriod])
+}
+
+model SalaryBenchmark {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  category        BenchmarkCategory
+  positionId      String?
+  departmentId    String?
+  
+  marketAverage   Float               // Industry market average
+  companyAverage  Float               // Company average
+  percentile      Float               // Company percentile vs market
+  
+  region          String?             // Geographic region
+  industry        String?             // Industry sector
+  companySize     String?             // Company size tier
+  
+  dataPoints      Json                // { p25, p50, p75, p90, etc. }
+  trends          Json?               // Historical salary trends
+  recommendations Json?               // Compensation recommendations
+  
+  lastUpdated     DateTime            @default(now())
+  
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  position        Position?           @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  department      Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([category])
+  @@index([positionId])
+  @@index([departmentId])
+  @@index([lastUpdated])
 }
