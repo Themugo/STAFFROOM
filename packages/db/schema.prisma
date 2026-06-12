@@ -874,6 +874,25 @@ enum DepartmentPostType {
   PINNED
 }
 
+// Phase 24: Shift Swap & Coverage Planning Enums
+enum SwapStatus {
+  PENDING
+  SUPERVISOR_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum CalendarEventType {
+  SHIFT
+  LEAVE
+  PUBLIC_HOLIDAY
+  TRAINING
+  MEETING
+  COMPENSATION_DAY
+  DUTY_ROSTER
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -1031,6 +1050,11 @@ model Employee {
   departmentPosts  DepartmentPost[] @relation("DepartmentPostAuthor")
   departmentComments DepartmentComment[] @relation("DepartmentCommentAuthor")
   
+  // Phase 24: Shift Swap & Coverage Planning Relations
+  swapRequestsAsRequester ShiftSwapRequest[] @relation("SwapRequester")
+  swapRequestsAsTarget ShiftSwapRequest[] @relation("SwapTarget")
+  calendarEvents   WorkforceCalendarEvent[] @relation("CalendarEventEmployee")
+  
   // Recruitment Relations
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
@@ -1133,6 +1157,11 @@ model Department {
   // Phase 23: Workforce Balancing & Department Hub Relations
   workforceBalances WorkforceBalance[]
   departmentPosts   DepartmentPost[]
+  
+  // Phase 24: Shift Swap & Coverage Planning Relations
+  shiftSwapRequests ShiftSwapRequest[]
+  coverageWarnings  CoverageWarning[]
+  calendarEvents    WorkforceCalendarEvent[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -2411,6 +2440,11 @@ model Company {
   // Phase 23: Workforce Balancing & Department Hub Relations
   workforceBalances WorkforceBalance[]
   departmentPosts   DepartmentPost[]
+  
+  // Phase 24: Shift Swap & Coverage Planning Relations
+  shiftSwapRequests ShiftSwapRequest[]
+  coverageWarnings  CoverageWarning[]
+  calendarEvents    WorkforceCalendarEvent[]
   
   @@index([tenantId])
   @@index([code])
@@ -4613,4 +4647,148 @@ model DepartmentComment {
   @@index([postId])
   @@index([authorId])
   @@index([createdAt])
+}
+
+// Phase 24: Shift Swap & Coverage Planning Models
+model ShiftSwapRequest {
+  id              String        @id @default(cuid())
+  companyId       String
+  departmentId    String
+  
+  // Requester
+  requesterId     String
+  
+  // Target employee (to swap with)
+  targetEmployeeId String
+  
+  // Shift details
+  requesterShiftDate DateTime
+  requesterShiftTemplateId String?
+  
+  targetShiftDate DateTime
+  targetShiftTemplateId String?
+  
+  // Status
+  status          SwapStatus    @default(PENDING)
+  
+  // Workflow
+  supervisorId    String?
+  supervisorReviewAt DateTime?
+  supervisorNotes String?
+  
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  
+  // Roster update
+  rosterUpdated   Boolean       @default(false)
+  rosterUpdatedAt DateTime?
+  
+  // Notes
+  reason          String?       @db.Text
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  requester       Employee      @relation("SwapRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  targetEmployee  Employee      @relation("SwapTarget", fields: [targetEmployeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([requesterId])
+  @@index([targetEmployeeId])
+  @@index([status])
+  @@index([requesterShiftDate])
+}
+
+model CoverageWarning {
+  id              String        @id @default(cuid())
+  companyId       String
+  departmentId    String
+  
+  // Shift/Date context
+  shiftTemplateId String?
+  date            DateTime
+  
+  // Warning type
+  warningType     String        // e.g., "CRITICAL_SKILL_MISSING", "UNDERSTAFFED", "OVERSTAFFED"
+  
+  // Details
+  skillRequired   String?       // e.g., "Certified Electrician", "ICU Nurse"
+  skillMissing    Boolean       @default(true)
+  
+  // Severity
+  severity        String        // e.g., "HIGH", "MEDIUM", "LOW"
+  
+  // Description
+  description     String        @db.Text
+  
+  // Resolution
+  isResolved      Boolean       @default(false)
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([date])
+  @@index([warningType])
+  @@index([isResolved])
+}
+
+model WorkforceCalendarEvent {
+  id              String              @id @default(cuid())
+  companyId       String
+  departmentId    String
+  
+  type            CalendarEventType
+  
+  // Event details
+  title           String
+  description     String?            @db.Text
+  
+  // Date/Time
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Employee (if applicable)
+  employeeId      String?
+  
+  // Reference
+  referenceType   String?             // e.g., "SHIFT", "LEAVE", "TRAINING", "MEETING"
+  referenceId     String?
+  
+  // Location
+  location        String?
+  
+  // Color (for calendar UI)
+  color           String?
+  
+  // All day event
+  isAllDay        Boolean             @default(false)
+  
+  // Recurrence
+  isRecurring     Boolean             @default(false)
+  recurrenceRule  Json?               // e.g., {"frequency": "WEEKLY", "days": ["MONDAY", "FRIDAY"]}
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department          @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  employee        Employee?           @relation("CalendarEventEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([employeeId])
+  @@index([type])
+  @@index([startDate])
+  @@index([endDate])
 }

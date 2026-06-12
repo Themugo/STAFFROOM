@@ -60,6 +60,7 @@ app.use('/api/shift-management', require('./routes/shiftManagement'));
 app.use('/api/roster-compensation', require('./routes/rosterCompensation'));
 app.use('/api/time-bank', require('./routes/timeBank'));
 app.use('/api/workforce-hub', require('./routes/workforceHub'));
+app.use('/api/shift-swap', require('./routes/shiftSwap'));
 
 // Health check
 app.get('/health', (req, res) => {
