@@ -64,6 +64,7 @@ app.use('/api/shift-swap', require('./routes/shiftSwap'));
 app.use('/api/reconciliation', require('./routes/reconciliation'));
 app.use('/api/governance', require('./routes/governance'));
 app.use('/api/high-priority-gaps', require('./routes/highPriorityGaps'));
+app.use('/api/medium-priority-gaps', require('./routes/mediumPriorityGaps'));
 
 // Health check
 app.get('/health', (req, res) => {
