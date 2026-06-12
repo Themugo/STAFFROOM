@@ -893,6 +893,24 @@ enum CalendarEventType {
   DUTY_ROSTER
 }
 
+// Phase 25: Attendance Reconciliation & Workforce Planning Enums
+enum ReconciliationStatus {
+  MATCHED
+  LATE
+  EARLY
+  ABSENT
+  OVERTIME
+  UNAUTHORIZED_ABSENCE
+}
+
+enum PlanningPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -1055,6 +1073,9 @@ model Employee {
   swapRequestsAsTarget ShiftSwapRequest[] @relation("SwapTarget")
   calendarEvents   WorkforceCalendarEvent[] @relation("CalendarEventEmployee")
   
+  // Phase 25: Attendance Reconciliation & Workforce Planning Relations
+  attendanceReconciliations AttendanceReconciliation[] @relation("AttendanceReconciliation")
+  
   // Recruitment Relations
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
@@ -1162,6 +1183,9 @@ model Department {
   shiftSwapRequests ShiftSwapRequest[]
   coverageWarnings  CoverageWarning[]
   calendarEvents    WorkforceCalendarEvent[]
+  
+  // Phase 25: Attendance Reconciliation & Workforce Planning Relations
+  workforceForecasts WorkforceForecast[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -2445,6 +2469,10 @@ model Company {
   shiftSwapRequests ShiftSwapRequest[]
   coverageWarnings  CoverageWarning[]
   calendarEvents    WorkforceCalendarEvent[]
+  
+  // Phase 25: Attendance Reconciliation & Workforce Planning Relations
+  attendanceReconciliations AttendanceReconciliation[]
+  workforceForecasts WorkforceForecast[]
   
   @@index([tenantId])
   @@index([code])
@@ -4791,4 +4819,87 @@ model WorkforceCalendarEvent {
   @@index([type])
   @@index([startDate])
   @@index([endDate])
+}
+
+// Phase 25: Attendance Reconciliation & Workforce Planning Models
+model AttendanceReconciliation {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Scheduled time (from roster)
+  scheduledDate   DateTime
+  scheduledTime   DateTime
+  
+  // Actual time (from attendance)
+  actualCheckIn   DateTime?
+  actualCheckOut  DateTime?
+  
+  // Variance calculation
+  varianceMinutes Int                 @default(0) // Can be positive (late) or negative (early)
+  
+  // Status
+  status          ReconciliationStatus
+  
+  // Calculated values
+  latenessMinutes Float?             @default(0)
+  overtimeHours   Float?             @default(0)
+  compensationCredits Float?         @default(0)
+  owedHours       Float?             @default(0)
+  
+  // Reference
+  rosterAssignmentId String?
+  attendanceId     String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("AttendanceReconciliation", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([employeeId, scheduledDate])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model WorkforceForecast {
+  id              String        @id @default(cuid())
+  companyId       String
+  
+  // Scope
+  departmentId    String?
+  branchId        String?
+  shiftTemplateId String?
+  
+  // Forecast period
+  period          PlanningPeriod
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Staffing requirements
+  requiredStaff   Int
+  currentStaff    Int
+  gap             Int             // Can be positive (need more) or negative (excess)
+  
+  // Skill requirements
+  skillRequired   String?        // e.g., "Certified Electrician", "ICU Nurse"
+  skillCurrent     Int?          // Current count of staff with this skill
+  skillGap        Int?          // Gap in skill requirements
+  
+  // Details
+  details         Json?         // Additional context
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([branchId])
+  @@index([period])
+  @@index([startDate])
 }

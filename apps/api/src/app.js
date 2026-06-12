@@ -61,6 +61,7 @@ app.use('/api/roster-compensation', require('./routes/rosterCompensation'));
 app.use('/api/time-bank', require('./routes/timeBank'));
 app.use('/api/workforce-hub', require('./routes/workforceHub'));
 app.use('/api/shift-swap', require('./routes/shiftSwap'));
+app.use('/api/reconciliation', require('./routes/reconciliation'));
 
 // Health check
 app.get('/health', (req, res) => {
