@@ -52,6 +52,7 @@ app.use('/api/performance', require('./routes/performance'));
 app.use('/api/lms', require('./routes/lms'));
 app.use('/api', require('./routes/assets'));
 app.use('/api/communications', require('./routes/communications'));
+app.use('/api', require('./routes/integrations'));
 
 // Health check
 app.get('/health', (req, res) => {

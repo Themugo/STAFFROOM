@@ -592,6 +592,54 @@ enum RecognitionType {
   ANNIVERSARY
 }
 
+// Enterprise Integrations Enums
+enum IntegrationType {
+  MICROSOFT_365
+  GOOGLE_WORKSPACE
+  PAYROLL_PROVIDER
+  ACCOUNTING_SYSTEM
+  ERP_SYSTEM
+  BIOMETRIC_DEVICE
+  SMS_GATEWAY
+  WHATSAPP_BUSINESS
+  CUSTOM
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING
+}
+
+enum WebhookStatus {
+  ACTIVE
+  INACTIVE
+  FAILED
+}
+
+// Regional Compliance Enums
+enum CountryCode {
+  KENYA
+  UGANDA
+  TANZANIA
+  RWANDA
+  SOUTH_AFRICA
+  NIGERIA
+  GHANA
+}
+
+enum ComplianceType {
+  TAX_RULES
+  PAYROLL_RULES
+  LEAVE_RULES
+  LABOR_LAWS
+  BENEFIT_RULES
+  PENSION_RULES
+  HEALTH_INSURANCE
+  SOCIAL_SECURITY
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -2064,6 +2112,11 @@ model Company {
   surveys           Survey[]
   recognitions      Recognition[]
   
+  // Enterprise Integrations Relations
+  integrations      Integration[]
+  webhooks          Webhook[]
+  companyCompliances CompanyCompliance[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -3212,4 +3265,141 @@ model Recognition {
   @@index([recipientId])
   @@index([giverId])
   @@index([createdAt])
+}
+
+// Enterprise Integrations Models
+model Integration {
+  id              String            @id @default(cuid())
+  companyId       String
+  
+  type            IntegrationType
+  status          IntegrationStatus @default(PENDING)
+  
+  name            String
+  description     String?
+  
+  apiKey          String?
+  apiSecret       String?
+  
+  config          Json?             // Integration-specific configuration
+  settings        Json?             // Integration settings
+  
+  lastSyncAt      DateTime?
+  lastError       String?
+  lastErrorAt     DateTime?
+  
+  enabled         Boolean           @default(true)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  webhooks        Webhook[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([status])
+  @@index([enabled])
+}
+
+model Webhook {
+  id              String        @id @default(cuid())
+  companyId       String
+  integrationId   String?
+  
+  name            String
+  description     String?
+  
+  url             String
+  method          String        @default("POST")
+  headers         Json?
+  
+  status          WebhookStatus @default(ACTIVE)
+  
+  events          Json?         // Event types to trigger webhook
+  
+  lastTriggeredAt DateTime?
+  lastError       String?
+  lastErrorAt     DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  integration     Integration? @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  logs            WebhookLog[]
+  
+  @@index([companyId])
+  @@index([integrationId])
+  @@index([status])
+}
+
+model WebhookLog {
+  id              String        @id @default(cuid())
+  webhookId       String
+  
+  payload         Json
+  response        Json?
+  statusCode      Int?
+  
+  success         Boolean
+  error           String?
+  
+  executedAt      DateTime      @default(now())
+  
+  webhook         Webhook       @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  
+  @@index([webhookId])
+  @@index([executedAt])
+}
+
+// Regional Compliance Models
+model ComplianceRule {
+  id              String          @id @default(cuid())
+  
+  country         CountryCode
+  type            ComplianceType
+  
+  name            String
+  description     String          @db.Text
+  
+  rules           Json            // Compliance rules as JSON
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  
+  isActive        Boolean         @default(true)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  companyCompliances CompanyCompliance[]
+  
+  @@index([country])
+  @@index([type])
+  @@index([isActive])
+  @@index([effectiveDate])
+}
+
+model CompanyCompliance {
+  id              String          @id @default(cuid())
+  companyId       String
+  complianceRuleId String
+  
+  isEnabled       Boolean         @default(true)
+  
+  customRules     Json?           // Company-specific overrides
+  
+  lastReviewedAt  DateTime?
+  nextReviewDate  DateTime?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  complianceRule  ComplianceRule  @relation(fields: [complianceRuleId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, complianceRuleId])
+  @@index([companyId])
+  @@index([complianceRuleId])
+  @@index([isEnabled])
 }
