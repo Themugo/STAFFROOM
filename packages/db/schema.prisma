@@ -858,6 +858,22 @@ enum CreditType {
   OTHER
 }
 
+// Phase 23: Workforce Balancing & Department Hub Enums
+enum StaffingStatus {
+  UNDERSTAFFED
+  OVERSTAFFED
+  BALANCED
+}
+
+enum DepartmentPostType {
+  ANNOUNCEMENT
+  MESSAGE
+  POLL
+  FILE
+  MEETING_NOTE
+  PINNED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -1011,6 +1027,10 @@ model Employee {
   employeeDebts    EmployeeDebt[] @relation("EmployeeDebts")
   employeeCredits  EmployeeCredit[] @relation("EmployeeCredits")
   
+  // Phase 23: Workforce Balancing & Department Hub Relations
+  departmentPosts  DepartmentPost[] @relation("DepartmentPostAuthor")
+  departmentComments DepartmentComment[] @relation("DepartmentCommentAuthor")
+  
   // Recruitment Relations
   onboarding        Onboarding[]
   managedBranches    Branch[]       @relation("BranchManager")
@@ -1109,6 +1129,10 @@ model Department {
   
   // Phase 21: Duty Roster & Compensation Calendar Relations
   dutyRosters       DutyRoster[]
+  
+  // Phase 23: Workforce Balancing & Department Hub Relations
+  workforceBalances WorkforceBalance[]
+  departmentPosts   DepartmentPost[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -2383,6 +2407,10 @@ model Company {
   timeBanks        TimeBank[]
   employeeDebts    EmployeeDebt[]
   employeeCredits  EmployeeCredit[]
+  
+  // Phase 23: Workforce Balancing & Department Hub Relations
+  workforceBalances WorkforceBalance[]
+  departmentPosts   DepartmentPost[]
   
   @@index([tenantId])
   @@index([code])
@@ -4486,4 +4514,103 @@ model EmployeeCredit {
   @@index([type])
   @@index([expiresAt])
   @@index([isResolved])
+}
+
+// Phase 23: Workforce Balancing & Department Hub Models
+model WorkforceBalance {
+  id              String          @id @default(cuid())
+  companyId       String
+  departmentId    String
+  
+  // Shift/Date context
+  shiftTemplateId String?
+  date            DateTime
+  
+  // Staffing requirements
+  requiredStaff   Int
+  assignedStaff   Int
+  gap             Int             // Can be positive (understaffed) or negative (overstaffed)
+  
+  // Status
+  status          StaffingStatus
+  
+  // Details
+  details         Json?           // Additional context like shift type, time range
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  
+  @@unique([departmentId, date, shiftTemplateId])
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([date])
+  @@index([status])
+}
+
+model DepartmentPost {
+  id              String              @id @default(cuid())
+  companyId       String
+  departmentId    String
+  
+  type            DepartmentPostType
+  title           String
+  content         String              @db.Text
+  
+  // Author
+  authorId        String
+  
+  // Poll options (if type is POLL)
+  pollOptions     Json?               // e.g., {"options": ["Option 1", "Option 2"], "votes": [5, 3]}
+  
+  // File attachment (if type is FILE)
+  fileUrl         String?
+  fileName        String?
+  fileSize        Int?
+  
+  // Meeting details (if type is MEETING_NOTE)
+  meetingDate     DateTime?
+  meetingAttendees Json?
+  
+  // Visibility
+  isPinned        Boolean             @default(false)
+  
+  // Engagement
+  likes           Int                 @default(0)
+  comments        Int                 @default(0)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department          @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  author          Employee            @relation("DepartmentPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  comments        DepartmentComment[]
+  
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([authorId])
+  @@index([type])
+  @@index([isPinned])
+  @@index([createdAt])
+}
+
+model DepartmentComment {
+  id              String          @id @default(cuid())
+  postId          String
+  authorId        String
+  
+  content         String          @db.Text
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  post            DepartmentPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          Employee        @relation("DepartmentCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@index([postId])
+  @@index([authorId])
+  @@index([createdAt])
 }
