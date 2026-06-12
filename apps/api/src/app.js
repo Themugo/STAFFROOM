@@ -50,6 +50,7 @@ app.use('/api', require('./routes/company'));
 app.use('/api/intelligence', require('./routes/intelligence'));
 app.use('/api/performance', require('./routes/performance'));
 app.use('/api/lms', require('./routes/lms'));
+app.use('/api', require('./routes/assets'));
 
 // Health check
 app.get('/health', (req, res) => {

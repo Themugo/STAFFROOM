@@ -481,6 +481,47 @@ enum AssessmentType {
   SURVEY
 }
 
+// Asset Management Enums
+enum AssetType {
+  LAPTOP
+  PHONE
+  TABLET
+  VEHICLE
+  UNIFORM
+  OFFICE_EQUIPMENT
+  FURNITURE
+  SOFTWARE_LICENSE
+  ACCESSORY
+  OTHER
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ASSIGNED
+  IN_USE
+  MAINTENANCE
+  DAMAGED
+  LOST
+  RETIRED
+  DISPOSED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  LOST
+  DAMAGED
+}
+
+enum AuditStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  OVERDUE
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -642,6 +683,9 @@ model Employee {
   certifications    Certification[]
   employeeSkills    EmployeeSkill[]
   
+  // Asset Management Relations
+  assetAssignments  AssetAssignment[]
+  
   @@index([employeeId])
   @@index([email])
   @@index([companyId])
@@ -691,6 +735,9 @@ model Department {
   productivityScores DepartmentProductivityScore[]
   hiringForecasts    HiringForecast[]
   salaryBenchmarks  SalaryBenchmark[]
+  
+  // Asset Management Relations
+  assets            Asset[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -1918,6 +1965,11 @@ model Company {
   certifications    Certification[]
   skills            Skill[]
   
+  // Asset Management Relations
+  assets            Asset[]
+  assetAssignments  AssetAssignment[]
+  assetAudits       AssetAudit[]
+  
   @@index([tenantId])
   @@index([code])
   @@index([status])
@@ -1945,6 +1997,9 @@ model Branch {
   manager     Employee?     @relation(fields: [managerId], references: [id])
   employees   Employee[]
   departments Department[]
+  
+  // Asset Management Relations
+  assets      Asset[]
   
   @@index([companyId])
   @@index([code])
@@ -2679,4 +2734,124 @@ model EmployeeSkill {
   @@index([employeeId])
   @@index([skillId])
   @@index([level])
+}
+
+// Asset Management Models
+model Asset {
+  id              String        @id @default(cuid())
+  companyId       String
+  branchId        String?
+  
+  type            AssetType
+  status          AssetStatus   @default(AVAILABLE)
+  
+  name            String
+  description     String?
+  serialNumber    String?       @unique
+  assetTag        String?       @unique
+  barcode         String?
+  
+  brand           String?
+  model           String?
+  year            Int?
+  color           String?
+  
+  purchaseDate    DateTime?
+  purchaseCost    Float?
+  currentValue    Float?
+  
+  location        String?
+  departmentId    String?
+  
+  specifications  Json?         // Technical specifications
+  accessories     Json?         // Included accessories
+  
+  warrantyExpiry  DateTime?
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  
+  imageUrl        String?
+  notes           String?       @db.Text
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch          Branch?       @relation(fields: [branchId], references: [id])
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  assignments     AssetAssignment[]
+  audits          AssetAudit[]
+  
+  @@index([companyId])
+  @@index([branchId])
+  @@index([type])
+  @@index([status])
+  @@index([serialNumber])
+  @@index([assetTag])
+  @@index([departmentId])
+}
+
+model AssetAssignment {
+  id              String            @id @default(cuid())
+  assetId         String
+  employeeId      String
+  companyId       String
+  
+  status          AssignmentStatus  @default(ACTIVE)
+  
+  assignedAt      DateTime          @default(now())
+  assignedBy      String            // Employee who assigned
+  expectedReturn  DateTime?
+  returnedAt      DateTime?
+  returnedBy      String?           // Employee who received return
+  
+  conditionOnAssignment Json?     // Condition notes when assigned
+  conditionOnReturn    Json?     // Condition notes when returned
+  
+  notes           String?           @db.Text
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  asset           Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  employee        Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([assetId])
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([status])
+  @@index([assignedAt])
+  @@index([expectedReturn])
+}
+
+model AssetAudit {
+  id              String        @id @default(cuid())
+  assetId         String
+  companyId       String
+  auditorId       String
+  
+  status          AuditStatus   @default(SCHEDULED)
+  
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  
+  condition       Json?         // Audit findings
+  issues          Json?         // Issues found
+  recommendations Json?         // Recommendations
+  photos          Json?         // Photo URLs
+  
+  notes           String?       @db.Text
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  asset           Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([assetId])
+  @@index([companyId])
+  @@index([auditorId])
+  @@index([status])
+  @@index([scheduledDate])
 }
