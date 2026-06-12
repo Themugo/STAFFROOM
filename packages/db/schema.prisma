@@ -1770,6 +1770,129 @@ enum SoDConflictStatus {
   ESCALATED
 }
 
+// Phase 32: Benefits Eligibility Rules
+enum EligibilityCriteriaType {
+  TENURE
+  SALARY_GRADE
+  DEPARTMENT
+  AGE
+  EMPLOYMENT_TYPE
+  POSITION_LEVEL
+  HOURS_WORKED
+  CUSTOM
+}
+
+enum EligibilityOperator {
+  EQUALS
+  GREATER_THAN
+  LESS_THAN
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN_OR_EQUAL
+  BETWEEN
+  IN
+  NOT_IN
+  CONTAINS
+}
+
+enum ProrationMethod {
+  FULL
+  PRO_RATA_DAYS
+  PRO_RATA_MONTHS
+  CUSTOM
+}
+
+// Phase 33: Exit Interview Tracking
+enum ExitInterviewType {
+  HR_INTERVIEW
+  MANAGER_INTERVIEW
+  PEER_INTERVIEW
+  SELF_ASSESSMENT
+  COMBINED
+}
+
+enum ExitReasonCategory {
+  CAREER_ADVANCEMENT
+  COMPENSATION
+  WORK_LIFE_BALANCE
+  MANAGEMENT
+  COMPANY_CULTURE
+  RELOCATION
+  HEALTH
+  RETIREMENT
+  REDUNDANCY
+  PERSONAL
+  OTHER
+}
+
+// Phase 34: Final Dues Calculation
+enum SettlementStatus {
+  PENDING
+  CALCULATED
+  APPROVED
+  PAID
+  DISPUTED
+}
+
+enum DeductionType {
+  TAX
+  LOAN_REPAYMENT
+  ADVANCE_RECOVERY
+  ASSET_RECOVERY
+  OTHER_DEDUCTION
+}
+
+// Phase 35: Labor Law Compliance
+enum ComplianceRuleType {
+  WORKING_HOURS
+  MINIMUM_WAGE
+  OVERTIME
+  LEAVE_ENTITLEMENT
+  TERMINATION_NOTICE
+  SEVERANCE
+  AGE_RESTRICTIONS
+  OTHER
+}
+
+enum ComplianceCheckStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  PENDING
+  EXEMPT
+}
+
+// Phase 36: GDPR Compliance
+enum ConsentType {
+  MARKETING
+  ANALYTICS
+  THIRD_PARTY
+  EMPLOYMENT
+  OTHER
+}
+
+enum ConsentStatus {
+  GRANTED
+  REVOKED
+  EXPIRED
+  PENDING
+}
+
+enum DataSubjectRequestType {
+  ACCESS
+  DELETION
+  PORTABILITY
+  RECTIFICATION
+  OBJECTION
+  RESTRICTION
+}
+
+enum DataSubjectRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  EXPIRED
+}
+
 // Multi-Company SaaS Enums
 enum CompanyStatus {
   ACTIVE
@@ -2101,6 +2224,37 @@ model Employee {
   sodConflictsAssigned SoDConflict[]
   sodConflictsAccepted SoDConflict[]
   
+  // Phase 32: Benefits Eligibility Rules Relations
+  benefitsEligibilityRules BenefitsEligibilityRule[]
+  
+  // Phase 33: Exit Interview Tracking Relations
+  exitInterviews ExitInterview[]
+  exitInterviewsAsInterviewer ExitInterview[]
+  
+  // Phase 34: Final Dues Calculation Relations
+  finalDuesCalculations FinalDuesCalculation[]
+  finalDuesAsCalculator FinalDuesCalculation[]
+  finalDuesAsApprover FinalDuesCalculation[]
+  leaveEncashments LeaveEncashment[]
+  leaveEncashmentsAsApprover LeaveEncashment[]
+  proRataBonuses ProRataBonus[]
+  settlementApprovals SettlementApproval[]
+  
+  // Phase 35: Labor Law Compliance Relations
+  complianceChecks ComplianceCheck[]
+  complianceChecksAsResolver ComplianceCheck[]
+  complianceViolations ComplianceViolation[]
+  complianceViolationsAssigned ComplianceViolation[]
+  
+  // Phase 36: GDPR Compliance Relations
+  dataConsents DataConsent[]
+  dataSubjectRequests DataSubjectRequest[]
+  dataSubjectRequestsAsProcessor DataSubjectRequest[]
+  dataBreachesAssigned DataBreach[]
+  privacyAssessmentsAsAssessor PrivacyAssessment[]
+  privacyAssessmentsAsApprover PrivacyAssessment[]
+  processingAgreementsAsApprover ProcessingAgreement[]
+  
   @@index([employeeId])
   @@index([email])
   @@index([companyId])
@@ -2196,6 +2350,9 @@ model Department {
   
   // Phase 29: External Workforce Relations
   externalWorkers ExternalWorker[]
+  
+  // Phase 32: Benefits Eligibility Rules Relations
+  benefitsEligibilityRules BenefitsEligibilityRule[]
   
   @@unique([companyId, code])
   @@index([companyId])
@@ -3594,6 +3751,33 @@ model Company {
   // Phase 30: Workforce Governance Relations
   policyGovernances PolicyGovernance[]
   sodConflicts SoDConflict[]
+  
+  // Phase 32: Benefits Eligibility Rules Relations
+  benefitsEligibilityRules BenefitsEligibilityRule[]
+  benefitsTiers BenefitsTier[]
+  
+  // Phase 33: Exit Interview Tracking Relations
+  exitInterviews ExitInterview[]
+  exitQuestionnaires ExitQuestionnaire[]
+  
+  // Phase 34: Final Dues Calculation Relations
+  finalDuesCalculations FinalDuesCalculation[]
+  leaveEncashments LeaveEncashment[]
+  proRataBonuses ProRataBonus[]
+  settlementApprovals SettlementApproval[]
+  
+  // Phase 35: Labor Law Compliance Relations
+  laborLawRules LaborLawRule[]
+  complianceChecks ComplianceCheck[]
+  complianceViolations ComplianceViolation[]
+  
+  // Phase 36: GDPR Compliance Relations
+  dataConsents DataConsent[]
+  dataRetentionPolicies DataRetentionPolicy[]
+  dataSubjectRequests DataSubjectRequest[]
+  dataBreaches DataBreach[]
+  privacyAssessments PrivacyAssessment[]
+  processingAgreements ProcessingAgreement[]
   
   @@index([tenantId])
   @@index([code])
@@ -8872,4 +9056,722 @@ model SoDConflict {
   @@index([conflictType])
   @@index([status])
   @@index([detectedDate])
+}
+
+// Phase 32: Benefits Eligibility Rules
+model BenefitsEligibilityRule {
+  id              String              @id @default(cuid())
+  companyId       String
+  benefitId       String              // Reference to BenefitEnrollment
+  
+  // Eligibility Criteria
+  criteriaType    EligibilityCriteriaType
+  operator        EligibilityOperator
+  
+  // Criteria Values
+  value           String              // JSON string for complex values
+  valueNumber     Float?
+  valueDate       DateTime?
+  
+  // Additional Conditions
+  departmentId    String?
+  positionId      String?
+  employmentType  String?
+  
+  // Proration
+  prorationMethod ProrationMethod     @default(FULL)
+  prorationDays   Int?
+  
+  // Waiting Period
+  waitingPeriodDays Int?
+  waitingPeriodMonths Int?
+  
+  // Status
+  active          Boolean             @default(true)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("BenefitsEligibilityRuleCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  department      Department?         @relation("BenefitsEligibilityRuleDepartment", fields: [departmentId], references: [id])
+  
+  @@index([companyId])
+  @@index([benefitId])
+  @@index([criteriaType])
+  @@index([active])
+  @@index([effectiveFrom])
+}
+
+model BenefitsTier {
+  id              String              @id @default(cuid())
+  companyId       String
+  benefitId       String
+  
+  // Tier Details
+  tierName        String
+  tierLevel       Int
+  description     String?
+  
+  // Eligibility
+  minSalary       Float?
+  maxSalary       Float?
+  minTenureDays   Int?
+  maxTenureDays   Int?
+  
+  // Benefits
+  coverageAmount  Float?
+  coveragePercentage Float?
+  employerContribution Float?
+  employeeContribution Float?
+  
+  // Status
+  active          Boolean             @default(true)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("BenefitsTierCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, benefitId, tierLevel])
+  @@index([companyId])
+  @@index([benefitId])
+  @@index([tierLevel])
+  @@index([active])
+}
+
+// Phase 33: Exit Interview Tracking
+model ExitInterview {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  exitProcessId   String?
+  
+  // Interview Details
+  interviewType   ExitInterviewType
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  interviewerId   String?
+  
+  // Exit Information
+  exitReason      String
+  exitCategory    ExitReasonCategory
+  exitDate        DateTime
+  
+  // Interview Content
+  questionnaireId String?
+  responses       Json?
+  rating          Float?
+  feedback        String?
+  comments        String?
+  
+  // Follow-up
+  actionRequired  Boolean             @default(false)
+  actionTaken     String?
+  
+  // Documents
+  recordingFile   String?
+  transcriptFile  String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ExitInterviewCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeExitInterview", fields: [employeeId], references: [id], onDelete: Cascade)
+  exitProcess     ExitProcess?        @relation("ExitProcessInterview", fields: [exitProcessId], references: [id])
+  interviewer     Employee?           @relation("ExitInterviewInterviewer", fields: [interviewerId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([exitProcessId])
+  @@index([scheduledDate])
+  @@index([exitCategory])
+}
+
+model ExitQuestionnaire {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Questionnaire Details
+  name            String
+  description     String?
+  interviewType   ExitInterviewType
+  
+  // Questions
+  questions       Json                // Array of question objects
+  
+  // Status
+  active          Boolean             @default(true)
+  version         String              @default("1.0")
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ExitQuestionnaireCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  exitInterviews  ExitInterview[]
+  
+  @@index([companyId])
+  @@index([interviewType])
+  @@index([active])
+}
+
+// Phase 34: Final Dues Calculation
+model FinalDuesCalculation {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  exitProcessId   String?
+  
+  // Calculation Status
+  status          SettlementStatus    @default(PENDING)
+  
+  // Salary Calculation
+  finalSalaryDate DateTime
+  finalSalary     Float
+  salaryCurrency  String              @default("USD")
+  
+  // Leave Encashment
+  leaveBalanceDays Int?
+  leaveEncashment Float?
+  
+  // Bonus Pro-rata
+  bonusEligible   Boolean             @default(false)
+  bonusAmount     Float?
+  
+  // Pension
+  pensionContribution Float?
+  pensionRefund   Float?
+  
+  // Deductions
+  totalDeductions Float               @default(0)
+  deductions      Json?               // Array of deduction objects
+  
+  // Final Settlement
+  netPayable      Float
+  settlementDate  DateTime?
+  
+  // Approval
+  calculatedBy    String?
+  calculatedAt    DateTime?
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Documents
+  payslipFile     String?
+  settlementFile  String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("FinalDuesCalculationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeFinalDuesCalculation", fields: [employeeId], references: [id], onDelete: Cascade)
+  exitProcess     ExitProcess?        @relation("ExitProcessFinalDues", fields: [exitProcessId], references: [id])
+  calculator      Employee?           @relation("FinalDuesCalculator", fields: [calculatedBy], references: [id])
+  approver        Employee?           @relation("FinalDuesApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([exitProcessId])
+  @@index([status])
+  @@index([finalSalaryDate])
+}
+
+model LeaveEncashment {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  duesCalculationId String?
+  
+  // Leave Details
+  leaveTypeId     String
+  leaveBalance    Float
+  encashmentDays  Float
+  
+  // Calculation
+  dailyRate       Float
+  encashmentAmount Float
+  currency        String              @default("USD")
+  
+  // Approval
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("LeaveEncashmentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeLeaveEncashment", fields: [employeeId], references: [id], onDelete: Cascade)
+  duesCalculation FinalDuesCalculation? @relation("FinalDuesLeaveEncashment", fields: [duesCalculationId], references: [id])
+  approver        Employee?           @relation("LeaveEncashmentApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([duesCalculationId])
+}
+
+model ProRataBonus {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  duesCalculationId String?
+  
+  // Bonus Details
+  bonusId         String
+  fullBonusAmount Float
+  proRataDays     Float
+  totalDays       Float
+  
+  // Calculation
+  proRataAmount   Float
+  currency        String              @default("USD")
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ProRataBonusCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeProRataBonus", fields: [employeeId], references: [id], onDelete: Cascade)
+  duesCalculation FinalDuesCalculation? @relation("FinalDuesProRataBonus", fields: [duesCalculationId], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([duesCalculationId])
+}
+
+model SettlementApproval {
+  id              String              @id @default(cuid())
+  companyId       String
+  duesCalculationId String
+  
+  // Approval Details
+  approvedBy      String
+  approvedAt      DateTime
+  status          SettlementStatus
+  comments        String?
+  
+  // Documents
+  approvalFile    String?
+  
+  createdAt       DateTime            @default(now())
+  
+  // Relations
+  company         Company             @relation("SettlementApprovalCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  duesCalculation FinalDuesCalculation @relation("FinalDuesSettlementApproval", fields: [duesCalculationId], references: [id])
+  approver        Employee            @relation("SettlementApprovalApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([duesCalculationId])
+  @@index([approvedBy])
+}
+
+// Phase 35: Labor Law Compliance
+model LaborLawRule {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Rule Details
+  ruleType        ComplianceRuleType
+  ruleName        String
+  description     String?
+  
+  // Jurisdiction
+  jurisdiction    String              // Country/Region code
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  
+  // Rule Parameters
+  parameters      Json                // Rule-specific parameters
+  minValue        Float?
+  maxValue        Float?
+  unit            String?             // hours, days, currency, etc.
+  
+  // Status
+  active          Boolean             @default(true)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("LaborLawRuleCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  complianceChecks ComplianceCheck[]
+  
+  @@index([companyId])
+  @@index([ruleType])
+  @@index([jurisdiction])
+  @@index([active])
+  @@index([effectiveDate])
+}
+
+model Jurisdiction {
+  id              String              @id @default(cuid())
+  
+  // Jurisdiction Details
+  code            String              @unique
+  name            String
+  country         String
+  region          String?
+  
+  // Labor Laws
+  minimumWage     Float?
+  workingHours    Float?
+  overtimeRate    Float?
+  
+  // Leave Entitlements
+  annualLeaveDays Int?
+  sickLeaveDays   Int?
+  maternityLeaveDays Int?
+  paternityLeaveDays Int?
+  
+  // Termination
+  noticeDays      Int?
+  severanceDays   Int?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@unique([code])
+  @@index([country])
+  @@index([region])
+}
+
+model ComplianceCheck {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  ruleId          String
+  
+  // Check Details
+  ruleType        ComplianceRuleType
+  status          ComplianceCheckStatus @default(PENDING)
+  
+  // Check Results
+  actualValue     Float?
+  expectedValue   Float?
+  variance        Float?
+  
+  // Context
+  checkDate       DateTime            @default(now())
+  context         Json?               // Additional context
+  
+  // Violation
+  isViolation     Boolean             @default(false)
+  violationSeverity RiskSeverity?
+  violationDescription String?
+  
+  // Resolution
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ComplianceCheckCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?           @relation("EmployeeComplianceCheck", fields: [employeeId], references: [id], onDelete: Cascade)
+  rule            LaborLawRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  resolver        Employee?           @relation("ComplianceCheckResolver", fields: [resolvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([ruleId])
+  @@index([status])
+  @@index([checkDate])
+}
+
+model ComplianceViolation {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String?
+  checkId         String?
+  
+  // Violation Details
+  ruleType        ComplianceRuleType
+  severity        RiskSeverity
+  description     String
+  
+  // Impact
+  impact          String?
+  financialImpact Float?
+  
+  // Detection
+  detectedDate    DateTime            @default(now())
+  detectionMethod String?
+  
+  // Resolution
+  status          ComplianceCheckStatus @default(NON_COMPLIANT)
+  resolvedDate    DateTime?
+  resolutionNotes String?
+  correctiveAction String?
+  
+  // Assignment
+  assignedTo      String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ComplianceViolationCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee?           @relation("EmployeeComplianceViolation", fields: [employeeId], references: [id], onDelete: Cascade)
+  check           ComplianceCheck?    @relation(fields: [checkId], references: [id])
+  assignedToUser  Employee?           @relation("ComplianceViolationAssignedTo", fields: [assignedTo], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([checkId])
+  @@index([status])
+  @@index([detectedDate])
+}
+
+// Phase 36: GDPR Compliance
+model DataConsent {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Consent Details
+  consentType     ConsentType
+  status          ConsentStatus       @default(PENDING)
+  
+  // Consent Information
+  purpose         String
+  description     String?
+  
+  // Validity
+  grantedAt       DateTime?
+  revokedAt       DateTime?
+  expiresAt       DateTime?
+  
+  // Documentation
+  consentVersion  String
+  consentText     String?
+  
+  // Verification
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("DataConsentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeDataConsent", fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([consentType])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model DataRetentionPolicy {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Policy Details
+  dataType        String              @unique
+  description     String?
+  
+  // Retention Period
+  retentionPeriod Int                // In days
+  retentionReason String
+  
+  // Deletion Action
+  autoDelete      Boolean             @default(false)
+  anonymize       Boolean             @default(false)
+  
+  // Status
+  active          Boolean             @default(true)
+  effectiveDate   DateTime
+  reviewDate      DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("DataRetentionPolicyCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([dataType])
+  @@index([active])
+  @@index([reviewDate])
+}
+
+model DataSubjectRequest {
+  id              String              @id @default(cuid())
+  companyId       String
+  employeeId      String
+  
+  // Request Details
+  requestType     DataSubjectRequestType
+  status          DataSubjectRequestStatus @default(PENDING)
+  
+  // Request Information
+  description     String
+  dataScope       Json?               // Array of data types requested
+  
+  // Timeline
+  requestedDate   DateTime            @default(now())
+  dueDate         DateTime
+  completedDate   DateTime?
+  
+  // Processing
+  processedBy     String?
+  processedAt     DateTime?
+  processingNotes String?
+  
+  // Response
+  responseData   String?             // File URL or data reference
+  rejectionReason String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("DataSubjectRequestCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation("EmployeeDataSubjectRequest", fields: [employeeId], references: [id], onDelete: Cascade)
+  processor       Employee?           @relation("DataSubjectRequestProcessor", fields: [processedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([requestType])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model DataBreach {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Breach Details
+  breachType      String
+  severity        RiskSeverity
+  description     String
+  
+  // Impact
+  affectedRecords Int
+  affectedEmployees Json?            // Array of employee IDs
+  
+  // Timeline
+  detectedDate    DateTime            @default(now())
+  reportedDate    DateTime?
+  resolvedDate    DateTime?
+  
+  // Notification
+  notificationRequired Boolean         @default(true)
+  notificationDate DateTime?
+  authorityNotified Boolean           @default(false)
+  
+  // Mitigation
+  mitigationSteps Json?
+  mitigationStatus String?
+  
+  // Assignment
+  assignedTo      String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("DataBreachCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  assignedToUser  Employee?           @relation("DataBreachAssignedTo", fields: [assignedTo], references: [id])
+  
+  @@index([companyId])
+  @@index([detectedDate])
+  @@index([severity])
+  @@index([status])
+}
+
+model PrivacyAssessment {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Assessment Details
+  projectName     String
+  description     String?
+  
+  // Risk Assessment
+  riskLevel       RiskSeverity
+  riskScore       Float?
+  
+  // Processing Activities
+  processingActivities Json?
+  dataTypes       Json?
+  
+  // Assessment
+  assessmentDate  DateTime
+  assessorId      String?
+  
+  // Findings
+  findings        Json?
+  recommendations Json?
+  
+  // Approval
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Review
+  reviewDate      DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("PrivacyAssessmentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  assessor        Employee?           @relation("PrivacyAssessmentAssessor", fields: [assessorId], references: [id])
+  approver        Employee?           @relation("PrivacyAssessmentApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([assessmentDate])
+  @@index([riskLevel])
+}
+
+model ProcessingAgreement {
+  id              String              @id @default(cuid())
+  companyId       String
+  
+  // Agreement Details
+  agreementName   String
+  thirdPartyName  String
+  agreementType   String
+  
+  // Data Transfer
+  dataCategories  Json?
+  transferPurpose String
+  transferLocation String?
+  
+  // Validity
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  
+  // Compliance
+  gdprCompliant   Boolean             @default(false)
+  complianceNotes String?
+  
+  // Documents
+  agreementFile   String?
+  
+  // Approval
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  // Relations
+  company         Company             @relation("ProcessingAgreementCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  approver        Employee?           @relation("ProcessingAgreementApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([effectiveDate])
+  @@index([expiryDate])
 }
