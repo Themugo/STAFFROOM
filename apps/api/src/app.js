@@ -5,8 +5,15 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const { initSentry, captureException, Sentry } = require('./config/sentry');
 
 const app = express();
+
+// Initialize Sentry
+initSentry(app);
+
+// Request handler for Sentry
+app.use(Sentry.Handlers.requestHandler());
 
 // Security middleware
 app.use(helmet());
@@ -87,10 +94,23 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  
+  // Capture exception in Sentry
+  captureException(err, {
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+    params: req.params,
+  });
+  
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
+
+// Sentry error handler (must be after all other middleware)
+app.use(Sentry.Handlers.errorHandler());
 
 module.exports = app;
