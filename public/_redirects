@@ -1,0 +1,17 @@
+# Cloudflare CDN Configuration
+# Redirect HTTP to HTTPS
+http://staffroom.ke/* https://staffroom.ke/:splat 301!
+http://www.staffroom.ke/* https://staffroom.ke/:splat 301!
+
+# API redirects
+/api/* https://api.staffroom.ke/:splat 200
+
+# Cache static assets
+/static/* /static/:splat 86400
+/images/* /images/:splat 86400
+/assets/* /assets/:splat 86400
+
+# Cache API responses (GET only)
+/api/dashboard/* 300
+/api/employees/* 300
+/api/departments/* 300
