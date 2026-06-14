@@ -1,4 +1,4 @@
-const prisma = require('../config/database');
+const { prisma } = require('../config/database');
 
 // Get complete 360 profile for an employee
 const getEmployee360Profile = async (req, res) => {

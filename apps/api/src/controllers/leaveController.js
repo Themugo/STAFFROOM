@@ -1,4 +1,4 @@
-const prisma = require('../config/database');
+const { prisma } = require('../config/database');
 
 const getAllLeaves = async (req, res) => {
   try {

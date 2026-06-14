@@ -1,8 +1,10 @@
-
 {
   "name": "staffroom-saas",
   "private": true,
   "scripts": {
     "dev": "node apps/api/src/server.js"
+  },
+  "dependencies": {
+    "prisma": "^5.7.0"
   }
 }
