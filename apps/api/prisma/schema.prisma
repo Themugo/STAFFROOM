@@ -2358,16 +2358,16 @@ model Employee {
   
   // Phase 38: License & Certification Expiry Relations
   licenses License[] @relation("EmployeeLicenses")
-  renewalReminders RenewalReminder[] @relation("EmployeeRenewalReminders")
-  complianceVerifications ComplianceVerification[] @relation("EmployeeComplianceVerifications")
-  complianceVerificationsAsVerifier ComplianceVerification[] @relation("EmployeeComplianceVerificationsAsVerifier")
+  renewalReminders RenewalReminder[] @relation("EmployeeRenewalReminder")
+  complianceVerifications ComplianceVerification[] @relation("EmployeeComplianceVerification")
+  complianceVerificationsAsVerifier ComplianceVerification[] @relation("ComplianceVerificationVerifier")
   
   // Phase 39: SACCO Deduction Integration Relations
-  saccoMemberships SACCOMembership[]
-  saccoContributions SACCOContribution[]
-  saccoLoans SACCOLoan[]
-  saccoLoanRepayments SACCOLoanRepayment[]
-  saccoStatements SACCOStatement[]
+  saccoMemberships SACCOMembership[] @relation("EmployeeSACCOMembership")
+  saccoContributions SACCOContribution[] @relation("EmployeeSACCOContribution")
+  saccoLoans SACCOLoan[] @relation("EmployeeSACCOLoan")
+  saccoLoanRepayments SACCOLoanRepayment[] @relation("EmployeeSACCOLoanRepayment")
+  saccoStatements SACCOStatement[] @relation("EmployeeSACCOStatement")
   
   // Phase 40: Team Model Relations
   teamMemberships TeamMember[] @relation("EmployeeTeamMember")
@@ -3842,16 +3842,16 @@ model Company {
   externalReports ExternalReport[]
   
   // Phase 38: License & Certification Expiry Relations
-  licenses License[]
-  renewalReminders RenewalReminder[]
-  complianceVerifications ComplianceVerification[]
+  licenses License[] @relation("LicenseCompany")
+  renewalReminders RenewalReminder[] @relation("RenewalReminderCompany")
+  complianceVerifications ComplianceVerification[] @relation("ComplianceVerificationCompany")
   
   // Phase 39: SACCO Deduction Integration Relations
-  saccoMemberships SACCOMembership[]
-  saccoContributions SACCOContribution[]
-  saccoLoans SACCOLoan[]
-  saccoLoanRepayments SACCOLoanRepayment[]
-  saccoStatements SACCOStatement[]
+  saccoMemberships SACCOMembership[] @relation("SACCOMembershipCompany")
+  saccoContributions SACCOContribution[] @relation("SACCOContributionCompany")
+  saccoLoans SACCOLoan[] @relation("SACCOLoanCompany")
+  saccoLoanRepayments SACCOLoanRepayment[] @relation("SACCOLoanRepaymentCompany")
+  saccoStatements SACCOStatement[] @relation("SACCOStatementCompany")
   
   // Phase 40: Team Model Relations
   teams Team[] @relation("TeamCompany")
@@ -9986,6 +9986,7 @@ model License {
   // Relations
   company         Company             @relation("LicenseCompany", fields: [companyId], references: [id], onDelete: Cascade)
   employee        Employee            @relation("EmployeeLicense", fields: [employeeId], references: [id], onDelete: Cascade)
+  renewalReminders RenewalReminder[]
   
   @@unique([companyId, employeeId, licenseNumber])
   @@index([companyId])
@@ -10091,6 +10092,7 @@ model SACCOMembership {
   employee        Employee            @relation("EmployeeSACCOMembership", fields: [employeeId], references: [id], onDelete: Cascade)
   contributions   SACCOContribution[]
   loans           SACCOLoan[]
+  statements      SACCOStatement[] @relation("SACCOMembershipStatement")
   
   @@unique([companyId, employeeId, membershipNumber])
   @@index([companyId])

@@ -2272,102 +2272,114 @@ model Employee {
   assetWorkflows AssetWorkflow[]
   
   // Phase 29: Performance Management Relations
-  okrs OKR[]
-  feedbackAsSubject Feedback360[] @relation("EmployeeFeedbackAsSubject")
-  feedbackAsReviewer Feedback360[] @relation("EmployeeFeedbackAsReviewer")
+  okrs OKR[] @relation("EmployeeOKR")
+  okrsAsApprover OKR[] @relation("OKRApprover")
+  okrsAsReviewer OKR[] @relation("OKRReviewer")
+  feedbackAsSubject Feedback360[] @relation("Feedback360Subject")
+  feedbackAsReviewer Feedback360[] @relation("Feedback360Reviewer")
   
   // Phase 29: Learning & Development Relations
-  complianceTrainings ComplianceTraining[]
-  mentorshipsAsMentor Mentorship[] @relation("EmployeeMentorshipsAsMentor")
-  mentorshipsAsMentee Mentorship[] @relation("EmployeeMentorshipsAsMentee")
+  complianceTrainings ComplianceTraining[] @relation("EmployeeComplianceTraining")
+  mentorshipsAsMentor Mentorship[] @relation("MentorshipMentor")
+  mentorshipsAsMentee Mentorship[] @relation("MentorshipMentee")
+  mentorshipsAsApprover Mentorship[] @relation("MentorshipApprover")
   
   // Phase 29: Workforce Planning Relations
-  headcountRequestsRequested HeadcountRequest[] @relation("EmployeeHeadcountRequestsRequested")
-  headcountRequestsApproved HeadcountRequest[] @relation("EmployeeHeadcountRequestsApproved")
+  headcountRequestsRequested HeadcountRequest[] @relation("HeadcountRequestRequester")
+  headcountRequestsApproved HeadcountRequest[] @relation("HeadcountRequestApprover")
+  workforceBudgetsAsApprover WorkforceBudget[] @relation("WorkforceBudgetApprover")
   
   // Phase 29: Succession Planning Relations
-  successors Successor[]
-  talentPoolSuccession TalentPoolSuccession[]
+  successors Successor[] @relation("EmployeeSuccessor")
+  talentPoolSuccession TalentPoolSuccession[] @relation("EmployeeTalentPoolSuccession")
+  successionPlansAsApprover SuccessionPlan[] @relation("SuccessionPlanApprover")
   
   // Phase 29: Internal Mobility Relations
-  mobilityRequests MobilityRequest[]
+  mobilityRequests MobilityRequest[] @relation("EmployeeMobilityRequest")
+  mobilityRequestsAsRequester MobilityRequest[] @relation("MobilityRequestRequester")
+  mobilityRequestsAsApprover MobilityRequest[] @relation("MobilityRequestApprover")
   
   // Phase 29: Workforce Risk Relations
-  workforceRisks WorkforceRisk[] @relation("EmployeeWorkforceRisks")
-  workforceRisksAssigned WorkforceRisk[] @relation("EmployeeWorkforceRisksAssigned")
+  workforceRisks WorkforceRisk[] @relation("EmployeeWorkforceRisk")
+  workforceRisksAssigned WorkforceRisk[] @relation("WorkforceRiskAssignedTo")
   
   // Phase 29: Financial Liability Relations
-  financialLiabilities FinancialLiability[]
+  financialLiabilities FinancialLiability[] @relation("EmployeeFinancialLiability")
+  financialLiabilitiesAsApprover FinancialLiability[] @relation("FinancialLiabilityApprover")
   
   // Phase 29: Benefits Valuation Relations
-  benefitsInKind BenefitsInKind[]
+  benefitsInKind BenefitsInKind[] @relation("EmployeeBenefitsInKind")
+  benefitsInKindAsApprover BenefitsInKind[] @relation("BenefitsInKindApprover")
   
   // Phase 30: Low Priority Gaps - Employee Relations Relations
-  employeeAwards EmployeeAward[] @relation("EmployeeAwards")
-  awardsAsAwarder EmployeeAward[] @relation("EmployeeAwardsAsAwarder")
-  awardsAsNominator EmployeeAward[] @relation("EmployeeAwardsAsNominator")
-  awardsAsApprover EmployeeAward[] @relation("EmployeeAwardsAsApprover")
-  employeeEngagements EmployeeEngagement[] @relation("EmployeeEngagements")
-  engagementsAsFacilitator EmployeeEngagement[] @relation("EmployeeEngagementsAsFacilitator")
-  employeeSentiments EmployeeSentiment[] @relation("EmployeeSentiments")
-  sentimentReviews EmployeeSentiment[] @relation("EmployeeSentimentReviews")
+  employeeAwards EmployeeAward[] @relation("EmployeeAwardEmployee")
+  awardsAsAwarder EmployeeAward[] @relation("EmployeeAwardAwarder")
+  awardsAsNominator EmployeeAward[] @relation("EmployeeAwardNominator")
+  awardsAsApprover EmployeeAward[] @relation("EmployeeAwardApprover")
+  employeeEngagements EmployeeEngagement[] @relation("EmployeeEngagementEmployee")
+  engagementsAsFacilitator EmployeeEngagement[] @relation("EmployeeEngagementFacilitator")
+  employeeSentiments EmployeeSentiment[] @relation("EmployeeSentimentEmployee")
+  sentimentReviews EmployeeSentiment[] @relation("EmployeeSentimentReviewer")
   
   // Phase 30: Workforce Communication Relations
-  policyAcknowledgements PolicyAcknowledgement[] @relation("EmployeePolicyAcknowledgements")
-  acknowledgementExemptions PolicyAcknowledgement[] @relation("EmployeeAcknowledgementExemptions")
+  policyAcknowledgements PolicyAcknowledgement[] @relation("EmployeePolicyAcknowledgement")
+  acknowledgementExemptions PolicyAcknowledgement[] @relation("PolicyAcknowledgementExemptionApprover")
+  communicationTemplates CommunicationTemplate[] @relation("CommunicationTemplateApprover")
   
   // Phase 30: Workforce Governance Relations
-  sodConflicts SoDConflict[] @relation("EmployeeSodConflicts")
-  sodConflictsAssigned SoDConflict[] @relation("EmployeeSodConflictsAssigned")
-  sodConflictsAccepted SoDConflict[] @relation("EmployeeSodConflictsAccepted")
+  policyGovernances PolicyGovernance[] @relation("PolicyGovernanceApprover")
+  policyGovernancesAsOwner PolicyGovernance[] @relation("PolicyGovernanceOwner")
+  sodConflicts SoDConflict[] @relation("EmployeeSoDConflict")
+  sodConflictsAssigned SoDConflict[] @relation("SoDConflictAssignedTo")
+  sodConflictsAccepted SoDConflict[] @relation("SoDConflictAccepter")
   
   // Phase 32: Benefits Eligibility Rules Relations
   benefitsEligibilityRules BenefitsEligibilityRule[]
   
   // Phase 33: Exit Interview Tracking Relations
-  exitInterviews ExitInterview[] @relation("EmployeeExitInterviews")
-  exitInterviewsAsInterviewer ExitInterview[] @relation("EmployeeExitInterviewsAsInterviewer")
+  exitInterviews ExitInterview[] @relation("EmployeeExitInterview")
+  exitInterviewsAsInterviewer ExitInterview[] @relation("ExitInterviewInterviewer")
   
   // Phase 34: Final Dues Calculation Relations
-  finalDuesCalculations FinalDuesCalculation[] @relation("EmployeeFinalDuesCalculations")
-  finalDuesAsCalculator FinalDuesCalculation[] @relation("EmployeeFinalDuesAsCalculator")
-  finalDuesAsApprover FinalDuesCalculation[] @relation("EmployeeFinalDuesAsApprover")
-  leaveEncashments LeaveEncashment[] @relation("EmployeeLeaveEncashments")
-  leaveEncashmentsAsApprover LeaveEncashment[] @relation("EmployeeLeaveEncashmentsAsApprover")
-  proRataBonuses ProRataBonus[] @relation("EmployeeProRataBonuses")
-  settlementApprovals SettlementApproval[] @relation("EmployeeSettlementApprovals")
+  finalDuesCalculations FinalDuesCalculation[] @relation("EmployeeFinalDuesCalculation")
+  finalDuesAsCalculator FinalDuesCalculation[] @relation("FinalDuesCalculator")
+  finalDuesAsApprover FinalDuesCalculation[] @relation("FinalDuesApprover")
+  leaveEncashments LeaveEncashment[] @relation("EmployeeLeaveEncashment")
+  leaveEncashmentsAsApprover LeaveEncashment[] @relation("LeaveEncashmentApprover")
+  proRataBonuses ProRataBonus[] @relation("EmployeeProRataBonus")
+  settlementApprovals SettlementApproval[] @relation("SettlementApprovalApprover")
   
   // Phase 35: Labor Law Compliance Relations
-  complianceChecks ComplianceCheck[] @relation("EmployeeComplianceChecks")
-  complianceChecksAsResolver ComplianceCheck[] @relation("EmployeeComplianceChecksAsResolver")
-  complianceViolations ComplianceViolation[] @relation("EmployeeComplianceViolations")
-  complianceViolationsAssigned ComplianceViolation[] @relation("EmployeeComplianceViolationsAssigned")
+  complianceChecks ComplianceCheck[] @relation("EmployeeComplianceCheck")
+  complianceChecksAsResolver ComplianceCheck[] @relation("ComplianceCheckResolver")
+  complianceViolations ComplianceViolation[] @relation("EmployeeComplianceViolation")
+  complianceViolationsAssigned ComplianceViolation[] @relation("ComplianceViolationAssignedTo")
   
   // Phase 36: GDPR Compliance Relations
-  dataConsents DataConsent[] @relation("EmployeeDataConsents")
-  dataSubjectRequests DataSubjectRequest[] @relation("EmployeeDataSubjectRequests")
-  dataBreachesAssigned DataBreach[] @relation("EmployeeDataBreachesAssigned")
-  privacyAssessmentsAsAssessor PrivacyAssessment[] @relation("EmployeePrivacyAssessmentsAsAssessor")
-  privacyAssessmentsAsApprover PrivacyAssessment[] @relation("EmployeePrivacyAssessmentsAsApprover")
-  processingAgreementsAsApprover ProcessingAgreement[] @relation("EmployeeProcessingAgreementsAsApprover")
+  dataConsents DataConsent[] @relation("EmployeeDataConsent")
+  dataSubjectRequests DataSubjectRequest[] @relation("EmployeeDataSubjectRequest")
+  dataBreachesAssigned DataBreach[] @relation("DataBreachAssignedTo")
+  privacyAssessmentsAsAssessor PrivacyAssessment[] @relation("PrivacyAssessmentAssessor")
+  privacyAssessmentsAsApprover PrivacyAssessment[] @relation("PrivacyAssessmentApprover")
+  processingAgreementsAsApprover ProcessingAgreement[] @relation("ProcessingAgreementApprover")
   
   // Phase 37: Harassment & Discrimination Workflows Relations
-  whistleblowerProtections WhistleblowerProtection[] @relation("EmployeeWhistleblowerProtections")
-  whistleblowerInvestigations WhistleblowerProtection[] @relation("EmployeeWhistleblowerInvestigations")
-  externalReports ExternalReport[] @relation("EmployeeExternalReports")
+  whistleblowerProtections WhistleblowerProtection[] @relation("EmployeeWhistleblowerProtection")
+  whistleblowerInvestigations WhistleblowerProtection[] @relation("WhistleblowerProtectionInvestigator")
+  externalReports ExternalReport[] @relation("EmployeeExternalReport")
   
   // Phase 38: License & Certification Expiry Relations
-  licenses License[] @relation("EmployeeLicenses")
-  renewalReminders RenewalReminder[] @relation("EmployeeRenewalReminders")
-  complianceVerifications ComplianceVerification[] @relation("EmployeeComplianceVerifications")
-  complianceVerificationsAsVerifier ComplianceVerification[] @relation("EmployeeComplianceVerificationsAsVerifier")
+  licenses License[] @relation("EmployeeLicense")
+  renewalReminders RenewalReminder[] @relation("EmployeeRenewalReminder")
+  complianceVerifications ComplianceVerification[] @relation("EmployeeComplianceVerification")
+  complianceVerificationsAsVerifier ComplianceVerification[] @relation("ComplianceVerificationVerifier")
   
   // Phase 39: SACCO Deduction Integration Relations
-  saccoMemberships SACCOMembership[]
-  saccoContributions SACCOContribution[]
-  saccoLoans SACCOLoan[]
-  saccoLoanRepayments SACCOLoanRepayment[]
-  saccoStatements SACCOStatement[]
+  saccoMemberships SACCOMembership[] @relation("EmployeeSACCOMembership")
+  saccoContributions SACCOContribution[] @relation("EmployeeSACCOContribution")
+  saccoLoans SACCOLoan[] @relation("EmployeeSACCOLoan")
+  saccoLoanRepayments SACCOLoanRepayment[] @relation("EmployeeSACCOLoanRepayment")
+  saccoStatements SACCOStatement[] @relation("EmployeeSACCOStatement")
   
   // Phase 40: Team Model Relations
   teamMemberships TeamMember[] @relation("EmployeeTeamMember")
@@ -2445,8 +2457,9 @@ model Department {
   updatedAt         DateTime          @updatedAt
   
   // Relations
-  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  branch            Branch?           @relation(fields: [branchId], references: [id])
+  company           Company           @relation("DepartmentCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  branch            Branch?           @relation("DepartmentBranch", fields: [branchId], references: [id])
+  benefitsEligibilityRules BenefitsEligibilityRule[] @relation("BenefitsEligibilityRuleDepartment")
   parentDepartment  Department?       @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id], onDelete: SetNull)
   subDepartments    Department[]      @relation("DepartmentHierarchy")
   head              Employee?         @relation("DepartmentHead", fields: [headId], references: [id])
@@ -2494,21 +2507,21 @@ model Department {
   clearanceItems ClearanceItem[]
   
   // Phase 29: Medium Priority Gaps - Workforce Planning Relations
-  headcountRequests HeadcountRequest[]
-  workforceBudgets WorkforceBudget[]
+  headcountRequests HeadcountRequest[] @relation("DepartmentHeadcountRequest")
+  workforceBudgets WorkforceBudget[] @relation("DepartmentWorkforceBudget")
+  
+  // Phase 29: Performance Management Relations
+  okrs OKR[] @relation("DepartmentOKR")
   
   // Phase 29: Succession Planning Relations
-  successionPlans SuccessionPlan[]
+  successionPlans SuccessionPlan[] @relation("DepartmentSuccessionPlan")
   
   // Phase 29: Internal Mobility Relations
-  mobilityRequestsAsCurrent MobilityRequest[] @relation("DepartmentMobilityRequestsAsCurrent")
-  mobilityRequestsAsNew MobilityRequest[] @relation("DepartmentMobilityRequestsAsNew")
+  mobilityRequestsAsCurrent MobilityRequest[] @relation("MobilityRequestCurrentDepartment")
+  mobilityRequestsAsNew MobilityRequest[] @relation("MobilityRequestNewDepartment")
   
   // Phase 29: External Workforce Relations
-  externalWorkers ExternalWorker[]
-  
-  // Phase 32: Benefits Eligibility Rules Relations
-  benefitsEligibilityRules BenefitsEligibilityRule[]
+  externalWorkers ExternalWorker[] @relation("DepartmentExternalWorker")
   
   // Phase 40: Team Model Relations
   teams Team[] @relation("TeamDepartment")
@@ -2542,6 +2555,10 @@ model Position {
   company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   department   Department @relation(fields: [departmentId], references: [id])
   employees    Employee[]
+  
+  // Phase 29: Internal Mobility Relations
+  mobilityRequestsAsCurrent MobilityRequest[] @relation("MobilityRequestCurrentPosition")
+  mobilityRequestsAsNew MobilityRequest[] @relation("MobilityRequestNewPosition")
   
   // Workforce Intelligence Relations
   salaryBenchmarks SalaryBenchmark[]
@@ -3766,92 +3783,92 @@ model Company {
   assetWorkflows AssetWorkflow[]
   
   // Phase 29: Performance Management Relations
-  okrs OKR[]
-  feedback360 Feedback360[]
+  okrs OKR[] @relation("CompanyOKR")
+  feedback360 Feedback360[] @relation("Feedback360Company")
   
   // Phase 29: Learning & Development Relations
-  complianceTrainings ComplianceTraining[]
-  mentorships Mentorship[]
+  complianceTrainings ComplianceTraining[] @relation("ComplianceTrainingCompany")
+  mentorships Mentorship[] @relation("MentorshipCompany")
   
   // Phase 29: Workforce Planning Relations
-  headcountRequests HeadcountRequest[]
-  workforceBudgets WorkforceBudget[]
+  headcountRequests HeadcountRequest[] @relation("CompanyHeadcountRequest")
+  workforceBudgets WorkforceBudget[] @relation("CompanyWorkforceBudget")
   
   // Phase 29: Succession Planning Relations
-  successionPlans SuccessionPlan[]
-  successors Successor[]
-  talentPoolSuccessions TalentPoolSuccession[]
+  successionPlans SuccessionPlan[] @relation("SuccessionPlanCompany")
+  successors Successor[] @relation("SuccessorCompany")
+  talentPoolSuccessions TalentPoolSuccession[] @relation("TalentPoolSuccessionCompany")
   
   // Phase 29: Internal Mobility Relations
-  mobilityRequests MobilityRequest[]
+  mobilityRequests MobilityRequest[] @relation("MobilityRequestCompany")
   
   // Phase 29: External Workforce Relations
-  externalWorkers ExternalWorker[]
+  externalWorkers ExternalWorker[] @relation("ExternalWorkerCompany")
   
   // Phase 29: Workforce Risk Relations
-  workforceRisks WorkforceRisk[]
+  workforceRisks WorkforceRisk[] @relation("WorkforceRiskCompany")
   
   // Phase 29: Financial Liability Relations
-  financialLiabilities FinancialLiability[]
+  financialLiabilities FinancialLiability[] @relation("FinancialLiabilityCompany")
   
   // Phase 29: Benefits Valuation Relations
-  benefitsInKind BenefitsInKind[]
+  benefitsInKind BenefitsInKind[] @relation("BenefitsInKindCompany")
   
   // Phase 30: Low Priority Gaps - Employee Relations Relations
-  employeeAwards EmployeeAward[]
-  employeeEngagements EmployeeEngagement[]
-  employeeSentiments EmployeeSentiment[]
+  employeeAwards EmployeeAward[] @relation("EmployeeAwardCompany")
+  employeeEngagements EmployeeEngagement[] @relation("EmployeeEngagementCompany")
+  employeeSentiments EmployeeSentiment[] @relation("EmployeeSentimentCompany")
   
   // Phase 30: Workforce Communication Relations
-  policyAcknowledgements PolicyAcknowledgement[]
-  communicationTemplates CommunicationTemplate[]
+  policyAcknowledgements PolicyAcknowledgement[] @relation("PolicyAcknowledgementCompany")
+  communicationTemplates CommunicationTemplate[] @relation("CommunicationTemplateCompany")
   
   // Phase 30: Workforce Governance Relations
-  policyGovernances PolicyGovernance[]
-  sodConflicts SoDConflict[]
+  policyGovernances PolicyGovernance[] @relation("PolicyGovernanceCompany")
+  sodConflicts SoDConflict[] @relation("SoDConflictCompany")
   
   // Phase 32: Benefits Eligibility Rules Relations
-  benefitsEligibilityRules BenefitsEligibilityRule[]
-  benefitsTiers BenefitsTier[]
+  benefitsEligibilityRules BenefitsEligibilityRule[] @relation("BenefitsEligibilityRuleCompany")
+  benefitsTiers BenefitsTier[] @relation("BenefitsTierCompany")
   
   // Phase 33: Exit Interview Tracking Relations
-  exitInterviews ExitInterview[]
-  exitQuestionnaires ExitQuestionnaire[]
+  exitInterviews ExitInterview[] @relation("ExitInterviewCompany")
+  exitQuestionnaires ExitQuestionnaire[] @relation("ExitQuestionnaireCompany")
   
   // Phase 34: Final Dues Calculation Relations
-  finalDuesCalculations FinalDuesCalculation[]
-  leaveEncashments LeaveEncashment[]
-  proRataBonuses ProRataBonus[]
-  settlementApprovals SettlementApproval[]
+  finalDuesCalculations FinalDuesCalculation[] @relation("FinalDuesCalculationCompany")
+  leaveEncashments LeaveEncashment[] @relation("LeaveEncashmentCompany")
+  proRataBonuses ProRataBonus[] @relation("ProRataBonusCompany")
+  settlementApprovals SettlementApproval[] @relation("SettlementApprovalCompany")
   
   // Phase 35: Labor Law Compliance Relations
-  laborLawRules LaborLawRule[]
-  complianceChecks ComplianceCheck[]
-  complianceViolations ComplianceViolation[]
+  laborLawRules LaborLawRule[] @relation("LaborLawRuleCompany")
+  complianceChecks ComplianceCheck[] @relation("ComplianceCheckCompany")
+  complianceViolations ComplianceViolation[] @relation("ComplianceViolationCompany")
   
   // Phase 36: GDPR Compliance Relations
-  dataConsents DataConsent[]
-  dataRetentionPolicies DataRetentionPolicy[]
-  dataSubjectRequests DataSubjectRequest[]
-  dataBreaches DataBreach[]
-  privacyAssessments PrivacyAssessment[]
-  processingAgreements ProcessingAgreement[]
+  dataConsents DataConsent[] @relation("DataConsentCompany")
+  dataRetentionPolicies DataRetentionPolicy[] @relation("DataRetentionPolicyCompany")
+  dataSubjectRequests DataSubjectRequest[] @relation("DataSubjectRequestCompany")
+  dataBreaches DataBreach[] @relation("DataBreachCompany")
+  privacyAssessments PrivacyAssessment[] @relation("PrivacyAssessmentCompany")
+  processingAgreements ProcessingAgreement[] @relation("ProcessingAgreementCompany")
   
   // Phase 37: Harassment & Discrimination Workflows Relations
-  whistleblowerProtections WhistleblowerProtection[]
-  externalReports ExternalReport[]
+  whistleblowerProtections WhistleblowerProtection[] @relation("WhistleblowerProtectionCompany")
+  externalReports ExternalReport[] @relation("ExternalReportCompany")
   
   // Phase 38: License & Certification Expiry Relations
-  licenses License[]
-  renewalReminders RenewalReminder[]
-  complianceVerifications ComplianceVerification[]
+  licenses License[] @relation("LicenseCompany")
+  renewalReminders RenewalReminder[] @relation("RenewalReminderCompany")
+  complianceVerifications ComplianceVerification[] @relation("ComplianceVerificationCompany")
   
   // Phase 39: SACCO Deduction Integration Relations
-  saccoMemberships SACCOMembership[]
-  saccoContributions SACCOContribution[]
-  saccoLoans SACCOLoan[]
-  saccoLoanRepayments SACCOLoanRepayment[]
-  saccoStatements SACCOStatement[]
+  saccoMemberships SACCOMembership[] @relation("SACCOMembershipCompany")
+  saccoContributions SACCOContribution[] @relation("SACCOContributionCompany")
+  saccoLoans SACCOLoan[] @relation("SACCOLoanCompany")
+  saccoLoanRepayments SACCOLoanRepayment[] @relation("SACCOLoanRepaymentCompany")
+  saccoStatements SACCOStatement[] @relation("SACCOStatementCompany")
   
   // Phase 40: Team Model Relations
   teams Team[] @relation("TeamCompany")
@@ -7339,6 +7356,8 @@ model ExitProcess {
   employee        Employee        @relation("EmployeeExitProcess", fields: [employeeId], references: [id], onDelete: Cascade)
   approver        Employee?       @relation("ExitProcessApprover", fields: [approvedBy], references: [id])
   clearanceItems  ClearanceItem[]
+  exitInterviews ExitInterview[] @relation("ExitProcessInterview")
+  finalDuesCalculations FinalDuesCalculation[] @relation("ExitProcessFinalDues")
   
   @@unique([companyId, employeeId, status])
   @@index([companyId])
@@ -8948,6 +8967,7 @@ model PolicyAcknowledgement {
   companyId       String
   employeeId      String
   policyId        String
+  policyGovernanceId String?
   
   // Acknowledgement Details
   status          AcknowledgementStatus @default(PENDING)
@@ -8981,6 +9001,7 @@ model PolicyAcknowledgement {
   company         Company         @relation("PolicyAcknowledgementCompany", fields: [companyId], references: [id], onDelete: Cascade)
   employee        Employee        @relation("EmployeePolicyAcknowledgement", fields: [employeeId], references: [id], onDelete: Cascade)
   exemptionApprover Employee?     @relation("PolicyAcknowledgementExemptionApprover", fields: [exemptionApprovedBy], references: [id])
+  policyGovernance PolicyGovernance? @relation("PolicyGovernanceAcknowledgements", fields: [policyGovernanceId], references: [id])
   
   @@unique([companyId, employeeId, policyId, policyVersion])
   @@index([companyId])
@@ -9076,10 +9097,10 @@ model PolicyGovernance {
   updatedAt       DateTime        @updatedAt
   
   // Relations
-  company         Company         @relation("PolicyGovernanceCompany", fields: [companyId], references: [id], onDelete: Cascade)
-  approver        Employee?       @relation("PolicyGovernanceApprover", fields: [approvedBy], references: [id])
-  owner           Employee?       @relation("PolicyGovernanceOwner", fields: [ownerId], references: [id])
-  acknowledgements PolicyAcknowledgement[]
+  company         Company             @relation("PolicyGovernanceCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  approver        Employee?           @relation("PolicyGovernanceApprover", fields: [approvedBy], references: [id])
+  owner           Employee?           @relation("PolicyGovernanceOwner", fields: [ownerId], references: [id])
+  acknowledgements PolicyAcknowledgement[] @relation("PolicyGovernanceAcknowledgements")
   
   @@unique([companyId, policyCode, version])
   @@index([companyId])
@@ -9278,6 +9299,7 @@ model ExitInterview {
   employee        Employee            @relation("EmployeeExitInterview", fields: [employeeId], references: [id], onDelete: Cascade)
   exitProcess     ExitProcess?        @relation("ExitProcessInterview", fields: [exitProcessId], references: [id])
   interviewer     Employee?           @relation("ExitInterviewInterviewer", fields: [interviewerId], references: [id])
+  questionnaire   ExitQuestionnaire?  @relation("ExitInterviewQuestionnaire", fields: [questionnaireId], references: [id])
   
   @@index([companyId])
   @@index([employeeId])
@@ -9307,7 +9329,7 @@ model ExitQuestionnaire {
   
   // Relations
   company         Company             @relation("ExitQuestionnaireCompany", fields: [companyId], references: [id], onDelete: Cascade)
-  exitInterviews  ExitInterview[]
+  exitInterviews  ExitInterview[]     @relation("ExitInterviewQuestionnaire")
   
   @@index([companyId])
   @@index([interviewType])
@@ -9368,6 +9390,9 @@ model FinalDuesCalculation {
   exitProcess     ExitProcess?        @relation("ExitProcessFinalDues", fields: [exitProcessId], references: [id])
   calculator      Employee?           @relation("FinalDuesCalculator", fields: [calculatedBy], references: [id])
   approver        Employee?           @relation("FinalDuesApprover", fields: [approvedBy], references: [id])
+  leaveEncashments LeaveEncashment[] @relation("FinalDuesLeaveEncashment")
+  proRataBonuses   ProRataBonus[] @relation("FinalDuesProRataBonus")
+  settlementApprovals SettlementApproval[] @relation("FinalDuesSettlementApproval")
   
   @@index([companyId])
   @@index([employeeId])
@@ -9572,6 +9597,7 @@ model ComplianceCheck {
   employee        Employee?           @relation("EmployeeComplianceCheck", fields: [employeeId], references: [id], onDelete: Cascade)
   rule            LaborLawRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   resolver        Employee?           @relation("ComplianceCheckResolver", fields: [resolvedBy], references: [id])
+  violations      ComplianceViolation[] @relation("ComplianceCheckViolations")
   
   @@index([companyId])
   @@index([employeeId])
@@ -9614,7 +9640,7 @@ model ComplianceViolation {
   // Relations
   company         Company             @relation("ComplianceViolationCompany", fields: [companyId], references: [id], onDelete: Cascade)
   employee        Employee?           @relation("EmployeeComplianceViolation", fields: [employeeId], references: [id], onDelete: Cascade)
-  check           ComplianceCheck?    @relation(fields: [checkId], references: [id])
+  check           ComplianceCheck?    @relation("ComplianceCheckViolations", fields: [checkId], references: [id])
   assignedToUser  Employee?           @relation("ComplianceViolationAssignedTo", fields: [assignedTo], references: [id])
   
   @@index([companyId])
@@ -9986,6 +10012,8 @@ model License {
   // Relations
   company         Company             @relation("LicenseCompany", fields: [companyId], references: [id], onDelete: Cascade)
   employee        Employee            @relation("EmployeeLicense", fields: [employeeId], references: [id], onDelete: Cascade)
+  renewalReminders RenewalReminder[] @relation("LicenseRenewalReminder")
+  complianceVerifications ComplianceVerification[] @relation("LicenseComplianceVerification")
   
   @@unique([companyId, employeeId, licenseNumber])
   @@index([companyId])
@@ -10091,6 +10119,7 @@ model SACCOMembership {
   employee        Employee            @relation("EmployeeSACCOMembership", fields: [employeeId], references: [id], onDelete: Cascade)
   contributions   SACCOContribution[]
   loans           SACCOLoan[]
+  statements      SACCOStatement[] @relation("SACCOMembershipStatement")
   
   @@unique([companyId, employeeId, membershipNumber])
   @@index([companyId])
