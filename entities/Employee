@@ -1,0 +1,81 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the employee"
+    },
+    "email": {
+      "type": "string",
+      "description": "Work email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "department": {
+      "type": "string",
+      "enum": [
+        "Engineering",
+        "Sales",
+        "Marketing",
+        "HR",
+        "Finance",
+        "Operations",
+        "Design",
+        "Legal",
+        "Executive"
+      ]
+    },
+    "job_title": {
+      "type": "string",
+      "description": "Job title / position"
+    },
+    "employment_type": {
+      "type": "string",
+      "enum": [
+        "Full-time",
+        "Part-time",
+        "Contract",
+        "Intern"
+      ],
+      "default": "Full-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "On Leave",
+        "Terminated"
+      ],
+      "default": "Active"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "base_salary": {
+      "type": "number",
+      "description": "Annual base salary"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "Profile photo URL"
+    },
+    "address": {
+      "type": "string"
+    },
+    "emergency_contact": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name",
+    "department",
+    "job_title"
+  ]
+}

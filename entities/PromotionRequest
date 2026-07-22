@@ -1,0 +1,107 @@
+{
+  "name": "PromotionRequest",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "current_title": {
+      "type": "string"
+    },
+    "proposed_title": {
+      "type": "string"
+    },
+    "current_salary": {
+      "type": "number"
+    },
+    "proposed_salary": {
+      "type": "number"
+    },
+    "salary_increase_pct": {
+      "type": "number"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "review_period": {
+      "type": "string",
+      "description": "e.g. Q1 2026"
+    },
+    "performance_rating": {
+      "type": "number",
+      "description": "1-5 from linked review"
+    },
+    "goals_met_pct": {
+      "type": "number"
+    },
+    "justification": {
+      "type": "string",
+      "description": "Manager's written justification"
+    },
+    "manager_name": {
+      "type": "string"
+    },
+    "supporting_notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Pending HR",
+        "Pending Finance",
+        "Approved",
+        "Rejected"
+      ],
+      "default": "Draft"
+    },
+    "hr_decision": {
+      "type": "string",
+      "enum": [
+        "",
+        "Approved",
+        "Rejected"
+      ],
+      "default": ""
+    },
+    "hr_notes": {
+      "type": "string"
+    },
+    "hr_reviewed_by": {
+      "type": "string"
+    },
+    "hr_reviewed_at": {
+      "type": "string"
+    },
+    "finance_decision": {
+      "type": "string",
+      "enum": [
+        "",
+        "Approved",
+        "Rejected"
+      ],
+      "default": ""
+    },
+    "finance_notes": {
+      "type": "string"
+    },
+    "finance_reviewed_by": {
+      "type": "string"
+    },
+    "finance_reviewed_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_id",
+    "proposed_title",
+    "justification"
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "name": "PayrollRecord",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string",
+      "description": "Reference to Employee ID"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "pay_period_month": {
+      "type": "number",
+      "description": "Month (1-12)"
+    },
+    "pay_period_year": {
+      "type": "number",
+      "description": "Year e.g. 2025"
+    },
+    "base_salary": {
+      "type": "number"
+    },
+    "bonus": {
+      "type": "number",
+      "default": 0
+    },
+    "deductions": {
+      "type": "number",
+      "default": 0
+    },
+    "tax": {
+      "type": "number",
+      "default": 0
+    },
+    "net_pay": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Approved",
+        "Paid"
+      ],
+      "default": "Draft"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_id",
+    "pay_period_month",
+    "pay_period_year"
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "name": "LeaveAccrual",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name for this accrual rule, e.g. 'Full-time Annual Leave'"
+    },
+    "leave_type": {
+      "type": "string",
+      "enum": [
+        "Annual",
+        "Sick",
+        "Maternity",
+        "Paternity",
+        "Compassionate",
+        "Study",
+        "Unpaid",
+        "Custom"
+      ]
+    },
+    "custom_leave_name": {
+      "type": "string"
+    },
+    "accrual_method": {
+      "type": "string",
+      "enum": [
+        "fixed_annual",
+        "monthly_rate",
+        "tenure_bands",
+        "unlimited"
+      ],
+      "default": "fixed_annual",
+      "description": "fixed_annual = flat days/year | monthly_rate = X days/month | tenure_bands = rate changes with years of service | unlimited"
+    },
+    "fixed_days": {
+      "type": "number",
+      "description": "Used when accrual_method = fixed_annual"
+    },
+    "monthly_rate": {
+      "type": "number",
+      "description": "Days earned per month, e.g. 1.75"
+    },
+    "accrual_cap": {
+      "type": "number",
+      "description": "Max accrued days before accrual stops"
+    },
+    "tenure_bands": {
+      "type": "array",
+      "description": "For tenure_bands method \u2014 sorted by min_years ascending",
+      "items": {
+        "type": "object",
+        "properties": {
+          "min_years": {
+            "type": "number"
+          },
+          "max_years": {
+            "type": "number"
+          },
+          "days_per_year": {
+            "type": "number"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "applies_to_employment_types": {
+      "type": "array",
+      "description": "Which employment types this rule applies to. Empty = all.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Full-time",
+          "Part-time",
+          "Contract",
+          "Intern"
+        ]
+      }
+    },
+    "applies_to_departments": {
+      "type": "array",
+      "description": "Departments this rule applies to. Empty = all.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prorate_on_join": {
+      "type": "boolean",
+      "default": true,
+      "description": "Pro-rate entitlement based on join date within the year"
+    },
+    "carry_over_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "carry_over_max_days": {
+      "type": "number"
+    },
+    "carry_over_expiry_months": {
+      "type": "number",
+      "description": "Carried-over days expire after this many months (null = never)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "leave_type",
+    "accrual_method"
+  ]
+}

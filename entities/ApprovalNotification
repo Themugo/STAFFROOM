@@ -1,0 +1,62 @@
+{
+  "name": "ApprovalNotification",
+  "type": "object",
+  "properties": {
+    "leave_request_id": {
+      "type": "string"
+    },
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "employee_email": {
+      "type": "string"
+    },
+    "manager_email": {
+      "type": "string"
+    },
+    "leave_type": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "days_requested": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "submitted",
+        "approved",
+        "rejected"
+      ],
+      "default": "submitted"
+    },
+    "manager_notes": {
+      "type": "string"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "email_sent": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "leave_request_id",
+    "employee_id",
+    "action"
+  ]
+}

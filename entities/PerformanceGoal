@@ -1,0 +1,67 @@
+{
+  "name": "PerformanceGoal",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "period": {
+      "type": "string",
+      "description": "e.g. Q1 2026"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Performance",
+        "Development",
+        "Leadership",
+        "Technical",
+        "Collaboration"
+      ],
+      "default": "Performance"
+    },
+    "target": {
+      "type": "string",
+      "description": "Measurable target"
+    },
+    "progress": {
+      "type": "number",
+      "description": "0-100 progress percentage",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Not Started",
+        "In Progress",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Not Started"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "manager_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_id",
+    "period",
+    "title"
+  ]
+}

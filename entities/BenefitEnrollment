@@ -1,0 +1,74 @@
+{
+  "name": "BenefitEnrollment",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "benefit_type": {
+      "type": "string",
+      "enum": [
+        "Health Insurance",
+        "Dental",
+        "Vision",
+        "Life Insurance",
+        "401k / Pension",
+        "Gym Membership",
+        "Remote Work Stipend",
+        "Education Allowance",
+        "Other"
+      ]
+    },
+    "plan_name": {
+      "type": "string"
+    },
+    "coverage_level": {
+      "type": "string",
+      "enum": [
+        "Employee Only",
+        "Employee + Spouse",
+        "Employee + Children",
+        "Family"
+      ],
+      "default": "Employee Only"
+    },
+    "enrollment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "monthly_cost": {
+      "type": "number"
+    },
+    "employer_contribution": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Pending",
+        "Cancelled"
+      ],
+      "default": "Active"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_id",
+    "benefit_type",
+    "enrollment_date"
+  ]
+}

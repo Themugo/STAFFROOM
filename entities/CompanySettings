@@ -1,0 +1,67 @@
+{
+  "name": "CompanySettings",
+  "type": "object",
+  "description": "Singleton record for org-wide settings. Exactly one record should exist \u2014 the app looks up the first record and updates it in place rather than creating a new one on every save.",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "default": "StaffCore Inc."
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "EUR",
+        "GBP",
+        "CAD"
+      ],
+      "default": "USD"
+    },
+    "timezone": {
+      "type": "string",
+      "enum": [
+        "UTC-8",
+        "UTC-7",
+        "UTC-6",
+        "UTC-5",
+        "UTC+0",
+        "UTC+1"
+      ],
+      "default": "UTC-5"
+    },
+    "email_notifications": {
+      "type": "boolean",
+      "default": true,
+      "description": "Receive system emails for important events"
+    },
+    "payroll_alerts": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notify when payroll needs approval"
+    },
+    "leave_alerts": {
+      "type": "boolean",
+      "default": false,
+      "description": "Notify when employees submit leave requests"
+    },
+    "require_2fa": {
+      "type": "boolean",
+      "default": false,
+      "description": "Require two-factor authentication for all admin logins"
+    },
+    "session_timeout_minutes": {
+      "type": "number",
+      "enum": [
+        30,
+        60,
+        120,
+        480
+      ],
+      "default": 60,
+      "description": "Auto-logout after this many minutes of inactivity"
+    }
+  },
+  "required": [
+    "company_name"
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "name": "LeavePolicy",
+  "type": "object",
+  "properties": {
+    "leave_type": {
+      "type": "string",
+      "description": "e.g. Annual, Sick, Maternity, Paternity, Compassionate, Study, Unpaid, Custom",
+      "enum": [
+        "Annual",
+        "Sick",
+        "Maternity",
+        "Paternity",
+        "Compassionate",
+        "Study",
+        "Unpaid",
+        "Custom"
+      ]
+    },
+    "custom_name": {
+      "type": "string",
+      "description": "Name override for Custom type"
+    },
+    "is_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "accrual_type": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "accrual",
+        "unlimited"
+      ],
+      "description": "fixed = set days per year | accrual = earned per month | unlimited = no limit",
+      "default": "fixed"
+    },
+    "fixed_days_per_year": {
+      "type": "number",
+      "description": "Used when accrual_type = fixed"
+    },
+    "accrual_rate_per_month": {
+      "type": "number",
+      "description": "Days earned per month (e.g. 1.75) \u2014 used when accrual_type = accrual"
+    },
+    "max_accrual_cap": {
+      "type": "number",
+      "description": "Maximum days that can be accrued before stop (leave cap)"
+    },
+    "carry_over_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_carry_over_days": {
+      "type": "number",
+      "description": "Max days that carry over to next year (0 = none, null = unlimited)"
+    },
+    "requires_approval": {
+      "type": "boolean",
+      "default": true
+    },
+    "requires_documentation": {
+      "type": "boolean",
+      "default": false,
+      "description": "e.g. sick note required"
+    },
+    "documentation_after_days": {
+      "type": "number",
+      "description": "Require doc after this many days (e.g. sick note after 3 days)"
+    },
+    "min_notice_days": {
+      "type": "number",
+      "description": "Minimum advance notice required in days",
+      "default": 0
+    },
+    "max_consecutive_days": {
+      "type": "number",
+      "description": "Max days allowed in a single request (null = unlimited)"
+    },
+    "gender_restricted": {
+      "type": "string",
+      "enum": [
+        "",
+        "Male",
+        "Female"
+      ],
+      "default": "",
+      "description": "Restrict to Male/Female employees (e.g. Maternity = Female)"
+    },
+    "waiting_period_months": {
+      "type": "number",
+      "description": "Months of employment before eligible (e.g. 6 months for study leave)",
+      "default": 0
+    },
+    "paid": {
+      "type": "boolean",
+      "default": true,
+      "description": "Is this leave paid?"
+    },
+    "color": {
+      "type": "string",
+      "description": "Hex color for UI display",
+      "default": "#0F1B2D"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal HR notes on this policy"
+    }
+  },
+  "required": [
+    "leave_type",
+    "accrual_type"
+  ]
+}

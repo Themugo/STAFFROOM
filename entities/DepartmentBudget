@@ -1,0 +1,37 @@
+{
+  "name": "DepartmentBudget",
+  "type": "object",
+  "properties": {
+    "department": {
+      "type": "string",
+      "enum": [
+        "Engineering",
+        "Sales",
+        "Marketing",
+        "HR",
+        "Finance",
+        "Operations",
+        "Design",
+        "Legal",
+        "Executive"
+      ],
+      "description": "Department name"
+    },
+    "fiscal_year": {
+      "type": "number",
+      "description": "e.g. 2026"
+    },
+    "annual_budget": {
+      "type": "number",
+      "description": "Total approved annual payroll budget"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "department",
+    "fiscal_year",
+    "annual_budget"
+  ]
+}

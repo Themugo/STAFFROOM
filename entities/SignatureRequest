@@ -1,0 +1,91 @@
+{
+  "name": "SignatureRequest",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Document title"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "Employment Contract",
+        "NDA",
+        "Policy Acknowledgement",
+        "Offer Letter",
+        "Termination Letter",
+        "Promotion Letter",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the document to sign"
+    },
+    "signers": {
+      "type": "array",
+      "description": "List of signers",
+      "items": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "employee_name": {
+            "type": "string"
+          },
+          "employee_email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Signed",
+              "Declined"
+            ]
+          },
+          "signed_at": {
+            "type": "string"
+          },
+          "declined_reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Sent",
+        "Partially Signed",
+        "Completed",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message to send to signers"
+    },
+    "sent_by": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "document_type"
+  ]
+}

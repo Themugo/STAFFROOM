@@ -1,0 +1,65 @@
+{
+  "name": "EmployeeDocument",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "document_name": {
+      "type": "string"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "Pay Slip",
+        "Contract",
+        "Tax Document",
+        "ID",
+        "Certificate",
+        "NDA",
+        "Policy",
+        "Performance Review",
+        "Onboarding",
+        "Other"
+      ],
+      "default": "Other"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "pay_period": {
+      "type": "string",
+      "description": "e.g. March 2026 \u2014 used for pay slips"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "employee",
+        "hr_only"
+      ],
+      "default": "employee",
+      "description": "employee = visible to the employee; hr_only = HR eyes only"
+    },
+    "uploaded_by": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_id",
+    "document_name",
+    "document_type"
+  ]
+}

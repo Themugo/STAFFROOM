@@ -1,0 +1,52 @@
+{
+  "name": "LeaveBalance",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "employee_name": {
+      "type": "string"
+    },
+    "year": {
+      "type": "number"
+    },
+    "balances": {
+      "type": "array",
+      "description": "One entry per leave type",
+      "items": {
+        "type": "object",
+        "properties": {
+          "leave_type": {
+            "type": "string"
+          },
+          "entitled": {
+            "type": "number",
+            "description": "Total entitled/accrued days for the year"
+          },
+          "used": {
+            "type": "number",
+            "default": 0
+          },
+          "carried_over": {
+            "type": "number",
+            "default": 0
+          },
+          "pending": {
+            "type": "number",
+            "default": 0,
+            "description": "Days in pending requests"
+          },
+          "last_accrual_month": {
+            "type": "number",
+            "description": "Last month accrual was run (1-12)"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "employee_id",
+    "year"
+  ]
+}
