@@ -58,61 +58,61 @@ Be specific and concise. Format with markdown headings and bullets.`;
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+    <div className="bg-white rounded-3xl border border-slate-100 shadow-xs p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "#D4A843" }}>
-            <Sparkles className="w-4 h-4 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
+            <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 text-sm">AI Payroll Analysis</h3>
-            <p className="text-xs text-gray-400">Powered by AI — instant insights</p>
+            <h3 className="font-bold text-slate-800 text-sm">AI Payroll & Expenditure Analysis</h3>
+            <p className="text-xs text-slate-400">Instant intelligence & anomaly audit</p>
           </div>
         </div>
         <Button onClick={runAnalysis} disabled={loading} size="sm"
-          className="gap-1.5 text-white text-xs" style={{ background: "#0F1B2D" }}>
+          className="gap-2 text-white text-xs bg-indigo-600 hover:bg-indigo-700 rounded-xl cursor-pointer">
           {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
           {loading ? "Analyzing…" : analysis ? "Re-analyze" : "Analyze Now"}
         </Button>
       </div>
 
       {!analysis && !loading && (
-        <div className="rounded-xl bg-gray-50 border border-gray-100 p-5 text-center">
-          <div className="flex justify-center gap-4 mb-3 text-gray-300">
-            <TrendingUp className="w-6 h-6" />
-            <AlertTriangle className="w-6 h-6" />
-            <Lightbulb className="w-6 h-6" />
+        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-6 text-center">
+          <div className="flex justify-center gap-5 mb-3 text-slate-400">
+            <TrendingUp className="w-6 h-6 text-indigo-500" />
+            <AlertTriangle className="w-6 h-6 text-amber-500" />
+            <Lightbulb className="w-6 h-6 text-emerald-500" />
           </div>
-          <p className="text-sm text-gray-500 font-medium">Get AI-powered payroll insights</p>
-          <p className="text-xs text-gray-400 mt-1">Trend analysis, risk alerts & optimization recommendations based on your live data.</p>
+          <p className="text-sm text-slate-700 font-bold">Generate AI-Powered Operational Insights</p>
+          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">Analyze expenditure patterns, flag salary discrepancies, and generate actionable recommendations.</p>
         </div>
       )}
 
       {loading && (
-        <div className="rounded-xl bg-amber-50 border border-amber-100 p-6 text-center">
-          <RefreshCw className="w-6 h-6 text-amber-400 animate-spin mx-auto mb-2" />
-          <p className="text-sm text-amber-700 font-medium">Analyzing your payroll data…</p>
-          <p className="text-xs text-amber-500 mt-1">This takes a few seconds</p>
+        <div className="rounded-2xl bg-indigo-50/60 border border-indigo-100 p-6 text-center">
+          <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin mx-auto mb-2" />
+          <p className="text-sm text-indigo-900 font-bold">Analyzing payroll & department datasets…</p>
+          <p className="text-xs text-indigo-600 mt-1">Synthesizing trends and risk alerts</p>
         </div>
       )}
 
       {analysis && (
-        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-5">
           <ReactMarkdown
-            className="prose prose-sm max-w-none text-gray-700"
+            className="prose prose-sm max-w-none text-slate-700"
             components={{
               h2: ({ children }) => (
-                <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mt-4 mb-1.5 first:mt-0">{children}</h2>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600 mt-4 mb-2 first:mt-0">{children}</h2>
               ),
-              ul: ({ children }) => <ul className="space-y-1 my-1">{children}</ul>,
+              ul: ({ children }) => <ul className="space-y-1.5 my-2">{children}</ul>,
               li: ({ children }) => (
-                <li className="flex items-start gap-1.5 text-xs text-gray-700">
-                  <span className="text-amber-400 mt-0.5 flex-shrink-0">•</span>
+                <li className="flex items-start gap-2 text-xs text-slate-700">
+                  <span className="text-indigo-500 font-bold mt-0.5 flex-shrink-0">•</span>
                   <span>{children}</span>
                 </li>
               ),
-              strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
-              p: ({ children }) => <p className="text-xs text-gray-600 my-1">{children}</p>,
+              strong: ({ children }) => <strong className="font-bold text-slate-900">{children}</strong>,
+              p: ({ children }) => <p className="text-xs text-slate-600 my-1 leading-relaxed">{children}</p>,
             }}
           >
             {analysis}

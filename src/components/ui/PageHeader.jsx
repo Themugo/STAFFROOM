@@ -1,18 +1,26 @@
-export default function PageHeader({ title, description, actions, icon: Icon }) {
+export default function PageHeader({ title, description, actions, icon: Icon, badge }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex items-center gap-3.5">
         {Icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
-            <Icon size={20} />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 shadow-xs">
+            <Icon size={22} />
           </div>
         )}
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
-          {description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>}
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
+            {badge && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                {badge}
+              </span>
+            )}
+          </div>
+          {description && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
+      {actions && <div className="flex items-center gap-2.5 flex-wrap">{actions}</div>}
     </div>
-  )
+  );
 }
+

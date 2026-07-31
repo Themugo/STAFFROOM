@@ -1,0 +1,6 @@
+{
+  "name": "STAFFROOM",
+  "description": "Enterprise Staff & HR Operations Platform with Recruitment ATS, Applicant Pipeline, Digital Onboarding, Probation Management, Leave Planner, Payroll, Performance Reviews, and Workforce Analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

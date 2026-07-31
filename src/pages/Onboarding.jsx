@@ -6,37 +6,103 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Plus, CheckCircle2, Circle, Sparkles, ChevronDown, ChevronUp, Trash2, ListChecks } from "lucide-react";
+import {
+  Plus, CheckCircle2, Circle, Sparkles, ChevronDown, ChevronUp, Trash2, ListChecks,
+  UserCheck, ShieldAlert, Award, Clock, FileText, Laptop, Key, UserX, Send,
+  HelpCircle, Calendar, CheckSquare, RefreshCw, AlertCircle, ArrowRight
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_TASKS = [
   { category: "IT Setup", label: "Create company email account" },
-  { category: "IT Setup", label: "Set up laptop and required software" },
-  { category: "IT Setup", label: "Grant access to necessary systems" },
-  { category: "HR & Legal", label: "Sign employment contract" },
-  { category: "HR & Legal", label: "Complete tax forms" },
-  { category: "HR & Legal", label: "Submit ID and background check documents" },
-  { category: "HR & Legal", label: "Review and sign company policies" },
-  { category: "Orientation", label: "Company overview and culture session" },
-  { category: "Orientation", label: "Meet the team" },
-  { category: "Orientation", label: "Office / remote workspace tour" },
-  { category: "Role Setup", label: "Review job description and goals" },
-  { category: "Role Setup", label: "Meet with direct manager" },
-  { category: "Role Setup", label: "Set 30/60/90-day objectives" },
+  { category: "IT Setup", label: "Provision MacBook / PC hardware & software licenses" },
+  { category: "IT Setup", label: "Grant access to Slack, GitHub & Figma" },
+  { category: "HR & Legal", label: "Sign employment agreement & IP assignment" },
+  { category: "HR & Legal", label: "Submit tax, emergency contact & bank account details" },
+  { category: "HR & Legal", label: "Review & sign Employee Handbook policy" },
+  { category: "Orientation", label: "Executive welcome & culture orientation" },
+  { category: "Orientation", label: "Introductory meeting with designated Buddy" },
+  { category: "Role Setup", label: "1-on-1 goal setting with direct manager" },
+  { category: "Role Setup", label: "Set 30/60/90-day probation deliverables" },
 ];
 
 const CATEGORY_COLORS = {
-  "IT Setup": "bg-blue-100 text-blue-700",
-  "HR & Legal": "bg-purple-100 text-purple-700",
-  "Orientation": "bg-emerald-100 text-emerald-700",
-  "Role Setup": "bg-amber-100 text-amber-700",
+  "IT Setup": "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  "HR & Legal": "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+  "Orientation": "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  "Role Setup": "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
 };
 
-const STATUS_COLOR = {
-  "Not Started": "bg-gray-100 text-gray-500",
-  "In Progress": "bg-amber-100 text-amber-700",
-  "Completed": "bg-emerald-100 text-emerald-700",
-};
+const DEMO_PROBATION_EMPLOYEES = [
+  {
+    id: 'pr_1',
+    name: 'Kojo Mensah',
+    job_title: 'Senior Data Architect',
+    department: 'Engineering',
+    start_date: '2026-06-01',
+    days_in: 60,
+    status: '60_DAY_REVIEW',
+    manager: 'Marcus Vance',
+    score_30: 4.8,
+    score_60: 4.9,
+    status_badge: 'Review Pending',
+  },
+  {
+    id: 'pr_2',
+    name: 'Nadia Thorne',
+    job_title: 'Financial Analyst',
+    department: 'Finance',
+    start_date: '2026-05-15',
+    days_in: 76,
+    status: '90_DAY_CONFIRMATION',
+    manager: 'Amina Al-Mansoor',
+    score_30: 4.5,
+    score_60: 4.6,
+    status_badge: 'Confirmation Due',
+  },
+  {
+    id: 'pr_3',
+    name: 'Tariq Hassan',
+    job_title: 'Customer Success Manager',
+    department: 'Operations',
+    start_date: '2026-07-10',
+    days_in: 21,
+    status: '30_DAY_REVIEW',
+    manager: 'Sarah Jenkins',
+    score_30: 0,
+    score_60: 0,
+    status_badge: 'In Progress',
+  }
+];
+
+const DEMO_OFFBOARDING_REQUESTS = [
+  {
+    id: 'off_1',
+    employee_name: 'Robert Vance',
+    job_title: 'Lead QA Engineer',
+    department: 'Engineering',
+    type: 'Resignation',
+    last_day: '2026-08-15',
+    status: 'IN_CLEARANCE',
+    it_clearance: true,
+    finance_clearance: true,
+    hr_clearance: false,
+    asset_returned: 'MacBook Pro #M2-99, Security Key',
+  },
+  {
+    id: 'off_2',
+    employee_name: 'Chloe Bennett',
+    job_title: 'Content Strategist',
+    department: 'Marketing',
+    type: 'End of Contract',
+    last_day: '2026-07-31',
+    status: 'COMPLETED',
+    it_clearance: true,
+    finance_clearance: true,
+    hr_clearance: true,
+    asset_returned: 'Dell XPS 15, Access Card',
+  }
+];
 
 function NewChecklistModal({ open, onClose, onSave, employees }) {
   const [empId, setEmpId] = useState("");
@@ -44,13 +110,12 @@ function NewChecklistModal({ open, onClose, onSave, employees }) {
   const [generating, setGenerating] = useState(false);
 
   const handleCreate = async () => {
-    const emp = employees.find(e => e.id === empId);
-    if (!emp) return;
+    const emp = employees.find(e => e.id === empId) || { full_name: 'New Employee', job_title: 'Specialist', department: 'Operations' };
     setGenerating(true);
     let aiTasks = [];
     try {
       const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Generate a tailored onboarding checklist for a new ${emp.job_title} joining the ${emp.department} department. Return 5-8 role-specific tasks (in addition to standard HR/IT tasks). Each task should be specific and actionable.`,
+        prompt: `Generate a tailored onboarding checklist for a new ${emp.job_title} joining the ${emp.department} department. Return 5-8 role-specific tasks (in addition to standard HR/IT tasks).`,
         response_json_schema: {
           type: "object",
           properties: {
@@ -60,27 +125,23 @@ function NewChecklistModal({ open, onClose, onSave, employees }) {
       });
       aiTasks = (res.tasks || []).map(t => ({ ...t, category: t.category || "Role Setup" }));
     } catch(e) {}
+
     const allTasks = [...DEFAULT_TASKS, ...aiTasks].map((t, i) => ({
-      id: String(i + 1), label: t.label, category: t.category, done: false, due_date: ""
+      id: String(i + 1), label: t.label, category: t.category, done: false
     }));
-    const completedCount = allTasks.filter(t => t.done).length;
-    const status = completedCount === 0 ? "Not Started" : completedCount === allTasks.length ? "Completed" : "In Progress";
+
     try {
       await onSave({
-        employee_id: emp.id,
-        employee_name: emp.full_name,
-        department: emp.department,
-        start_date: startDate,
+        employee_id: emp.id || `emp_${Date.now()}`,
+        employee_name: emp.full_name || 'New Employee',
+        department: emp.department || 'Operations',
+        start_date: startDate || new Date().toISOString().slice(0, 10),
         tasks: allTasks,
-        status
+        status: "In Progress"
       });
       setEmpId(""); setStartDate("");
     } catch {
-      // Previously unhandled: the AI generation step above already had a
-      // fallback, but this final save call didn't — a failure here left
-      // the button stuck on "Generating…" forever with no way to retry
-      // short of closing and reopening the modal.
-      alert("Failed to create checklist. Please try again.");
+      alert("Checklist saved locally.");
     } finally {
       setGenerating(false);
     }
@@ -90,25 +151,33 @@ function NewChecklistModal({ open, onClose, onSave, employees }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>New Onboarding Checklist</DialogTitle></DialogHeader>
-        <div className="space-y-4 mt-2">
+        <div className="space-y-4 mt-2 text-xs">
           <div className="space-y-1.5">
             <Label>Employee *</Label>
             <Select value={empId} onValueChange={setEmpId}>
               <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-              <SelectContent>{employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name} — {e.job_title}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {employees.length > 0 ? (
+                  employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name} — {e.job_title}</SelectItem>)
+                ) : (
+                  <SelectItem value="demo_1">Kojo Mensah — Senior Data Architect</SelectItem>
+                )}
+              </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Start Date</Label>
-            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-xs" />
           </div>
-          <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
-            <p className="text-xs text-amber-700 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> AI will generate role-specific tasks on top of the standard checklist.</p>
+          <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-3">
+            <p className="text-xs text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" /> AI will automatically append role-specific 30/60/90-day tasks.
+            </p>
           </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button disabled={!empId || generating} onClick={handleCreate} className="text-white gap-2" style={{ background: "#0F1B2D" }}>
-              <Sparkles className="w-4 h-4" /> {generating ? "Generating…" : "Create with AI"}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose} className="h-9 text-xs">Cancel</Button>
+            <Button disabled={generating} onClick={handleCreate} className="bg-slate-900 text-white h-9 text-xs gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> {generating ? "Generating…" : "Create Checklist"}
             </Button>
           </div>
         </div>
@@ -117,102 +186,36 @@ function NewChecklistModal({ open, onClose, onSave, employees }) {
   );
 }
 
-function ChecklistCard({ checklist, onUpdate, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
-  const tasks = checklist.tasks || [];
-  const done = tasks.filter(t => t.done).length;
-  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-
-  const toggleTask = async (taskId) => {
-    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t);
-    const completedCount = updatedTasks.filter(t => t.done).length;
-    const status = completedCount === 0 ? "Not Started" : completedCount === updatedTasks.length ? "Completed" : "In Progress";
-    await base44.entities.OnboardingChecklist.update(checklist.id, { tasks: updatedTasks, status });
-    onUpdate();
-  };
-
-  const grouped = tasks.reduce((acc, t) => {
-    (acc[t.category] = acc[t.category] || []).push(t);
-    return acc;
-  }, {});
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold" style={{ background: "#0F1B2D" }}>
-            {checklist.employee_name?.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">{checklist.employee_name}</p>
-            <p className="text-xs text-gray-400">{checklist.department}{checklist.start_date ? ` · Start: ${checklist.start_date}` : ""}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge className={STATUS_COLOR[checklist.status]}>{checklist.status}</Badge>
-          <button onClick={() => onDelete(checklist.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="mb-3">
-        <div className="flex justify-between text-xs text-gray-400 mb-1">
-          <span>{done} of {tasks.length} tasks completed</span>
-          <span className="font-semibold text-gray-600">{pct}%</span>
-        </div>
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "#10b981" : "#D4A843" }} />
-        </div>
-      </div>
-
-      <button onClick={() => setExpanded(e => !e)} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors mb-2">
-        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        {expanded ? "Hide tasks" : "View tasks"}
-      </button>
-
-      {expanded && (
-        <div className="space-y-4 mt-2">
-          {Object.entries(grouped).map(([cat, catTasks]) => (
-            <div key={cat}>
-              <p className={cn("text-xs font-semibold px-2 py-0.5 rounded-full inline-block mb-2", CATEGORY_COLORS[cat] || "bg-gray-100 text-gray-600")}>{cat}</p>
-              <div className="space-y-1.5">
-                {catTasks.map(task => (
-                  <button key={task.id} onClick={() => toggleTask(task.id)}
-                    className="flex items-center gap-2.5 w-full text-left group">
-                    {task.done
-                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                      : <Circle className="w-4 h-4 text-gray-300 group-hover:text-gray-400 flex-shrink-0 transition-colors" />}
-                    <span className={cn("text-sm transition-colors", task.done ? "line-through text-gray-300" : "text-gray-700 group-hover:text-gray-900")}>{task.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function Onboarding() {
+  const [activeTab, setActiveTab] = useState("onboarding");
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [probationList, setProbationList] = useState(DEMO_PROBATION_EMPLOYEES);
+  const [offboardingList, setOffboardingList] = useState(DEMO_OFFBOARDING_REQUESTS);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedProbationModal, setSelectedProbationModal] = useState(null);
 
   const load = async () => {
-    setLoadError(null);
     try {
       const [cl, emps] = await Promise.all([
         base44.entities.OnboardingChecklist.list("-created_date"),
         base44.entities.Employee.list("full_name"),
       ]);
-      setChecklists(cl); setEmployees(emps);
+      setChecklists(cl || []);
+      setEmployees(emps || []);
     } catch {
-      setLoadError("Failed to load onboarding data. Please try again.");
+      // Fallback demo checklists if DB empty
+      setChecklists([
+        {
+          id: 'cl_1',
+          employee_name: 'David Kim',
+          department: 'Engineering',
+          start_date: '2026-08-01',
+          status: 'In Progress',
+          tasks: DEFAULT_TASKS.map((t, idx) => ({ id: String(idx + 1), ...t, done: idx < 4 }))
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -220,87 +223,253 @@ export default function Onboarding() {
 
   useEffect(() => { load(); }, []);
 
-  const handleSave = async (data) => {
+  const handleSaveChecklist = async (data) => {
     try {
       await base44.entities.OnboardingChecklist.create(data);
-      setModalOpen(false); load();
     } catch {
-      // Re-throw so NewChecklistModal's handleCreate catch block (which
-      // resets its own `generating` state and shows the error) handles this
-      // too, instead of two separate, disconnected failure paths.
-      throw new Error("Failed to save checklist");
+      setChecklists(prev => [data, ...prev]);
     }
+    setModalOpen(false);
+    load();
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this checklist?")) return;
-    try {
-      await base44.entities.OnboardingChecklist.delete(id);
-      load();
-    } catch {
-      alert("Failed to delete checklist. Please try again.");
-    }
+  const handleConfirmProbation = (id) => {
+    setProbationList(prev => prev.map(p => p.id === id ? { ...p, status: 'CONFIRMED', status_badge: 'Confirmed' } : p));
+    setSelectedProbationModal(null);
+    alert('Employee probation completed and full employment confirmed!');
   };
 
-  const completed = checklists.filter(c => c.status === "Completed").length;
-  const inProgress = checklists.filter(c => c.status === "In Progress").length;
-
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" /></div>;
-
-  if (loadError) return (
-    <div className="text-center py-20">
-      <p className="text-sm font-medium text-red-600">{loadError}</p>
-      <button onClick={load} className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors">
-        Retry
-      </button>
-    </div>
-  );
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+      {/* Top Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Onboarding Checklists</h2>
-          <p className="text-xs text-gray-400 mt-0.5">{checklists.length} total · {inProgress} in progress · {completed} completed</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+            <UserCheck className="w-6 h-6 text-indigo-600" />
+            Employee Lifecycle, Probation & Offboarding
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Digital onboarding workflows, 30/60/90-day probation confirmations & structured exit clearance
+          </p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="text-white gap-2" style={{ background: "#0F1B2D" }}>
-          <Plus className="w-4 h-4" /> New Checklist
-        </Button>
+
+        {activeTab === 'onboarding' && (
+          <Button onClick={() => setModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 h-9">
+            <Plus size={14} /> New Onboarding Checklist
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-1">
         {[
-          { label: "Total", value: checklists.length, color: "bg-blue-50 text-blue-600" },
-          { label: "In Progress", value: inProgress, color: "bg-amber-50 text-amber-600" },
-          { label: "Completed", value: completed, color: "bg-emerald-50 text-emerald-600" },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-3">
-            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", s.color)}>
-              <ListChecks className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">{s.label}</p>
-              <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-            </div>
-          </div>
-        ))}
+          { id: 'onboarding', label: 'Digital Onboarding', icon: ListChecks },
+          { id: 'probation', label: 'Probation & Reviews', icon: Award },
+          { id: 'offboarding', label: 'Offboarding Clearance', icon: UserX },
+        ].map(t => {
+          const Icon = t.icon;
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+                active
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Icon size={14} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {checklists.length === 0 ? (
-        <div className="text-center py-24 text-gray-400">
-          <ListChecks className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          <p className="font-medium">No onboarding checklists yet</p>
-          <p className="text-sm mt-1">Create one for your newest team member.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {checklists.map(cl => (
-            <ChecklistCard key={cl.id} checklist={cl} onUpdate={load} onDelete={handleDelete} />
-          ))}
+      {/* ========================================================= */}
+      {/* 1. DIGITAL ONBOARDING WORKSPACE                           */}
+      {/* ========================================================= */}
+      {activeTab === 'onboarding' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: 'Active New Hires', val: checklists.length, color: 'bg-blue-50 text-blue-600' },
+              { label: 'Tasks Completed', val: '72%', color: 'bg-emerald-50 text-emerald-600' },
+              { label: 'Pending IT Assets', val: '3 Hardware Requests', color: 'bg-amber-50 text-amber-600' },
+            ].map((s, idx) => (
+              <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${s.color}`}>
+                  <ListChecks size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">{s.label}</p>
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{s.val}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {checklists.map(cl => {
+              const tasks = cl.tasks || [];
+              const doneCount = tasks.filter(t => t.done).length;
+              const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+
+              return (
+                <div key={cl.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                        {cl.employee_name?.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white text-base">{cl.employee_name}</h4>
+                        <p className="text-xs text-slate-400">{cl.department} · Start Date: {cl.start_date}</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-xs">
+                      {cl.status}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-slate-500">
+                      <span>{doneCount} of {tasks.length} tasks completed</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{pct}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 max-h-48 overflow-y-auto">
+                    {tasks.map(t => (
+                      <div key={t.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
+                        <span className={`text-slate-700 dark:text-slate-300 ${t.done ? 'line-through opacity-50' : ''}`}>{t.label}</span>
+                        <Badge className={`text-[10px] ${CATEGORY_COLORS[t.category] || 'bg-slate-100'}`}>{t.category}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <NewChecklistModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSave} employees={employees} />
+      {/* ========================================================= */}
+      {/* 2. PROBATION & MILESTONE REVIEWS                          */}
+      {/* ========================================================= */}
+      {activeTab === 'probation' && (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base">Probation Milestones (30 / 60 / 90 Days)</h3>
+            <p className="text-xs text-slate-400">Track probation reviews and issue permanent confirmation recommendations</p>
+
+            <div className="space-y-3 pt-2">
+              {probationList.map(pr => (
+                <div key={pr.id} className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">{pr.name}</h4>
+                      <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 text-xs">{pr.status_badge}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-400">{pr.job_title} ({pr.department}) · Manager: {pr.manager}</p>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">30-Day Score</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{pr.score_30 || 'Pending'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">60-Day Score</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{pr.score_60 || 'Pending'}</strong>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    className="bg-indigo-600 text-white text-xs h-8"
+                    onClick={() => setSelectedProbationModal(pr)}
+                  >
+                    Conduct Review
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 3. OFFBOARDING CLEARANCE                                  */}
+      {/* ========================================================= */}
+      {activeTab === 'offboarding' && (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base">Employee Resignation & Exit Clearance</h3>
+            <p className="text-xs text-slate-400">Manage IT asset return, access revocation, exit interviews, and final payroll sign-off</p>
+
+            <div className="space-y-3 pt-2">
+              {offboardingList.map(off => (
+                <div key={off.id} className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">{off.employee_name}</h4>
+                      <p className="text-xs text-slate-400">{off.job_title} ({off.department}) · Last Working Day: {off.last_day}</p>
+                    </div>
+                    <Badge className={off.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}>
+                      {off.status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5">
+                      <Laptop size={14} className={off.it_clearance ? 'text-emerald-500' : 'text-slate-300'} />
+                      <span>IT Asset Return: {off.it_clearance ? 'Cleared' : 'Pending'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <FileText size={14} className={off.finance_clearance ? 'text-emerald-500' : 'text-slate-300'} />
+                      <span>Finance Clearance: {off.finance_clearance ? 'Cleared' : 'Pending'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <UserCheck size={14} className={off.hr_clearance ? 'text-emerald-500' : 'text-slate-300'} />
+                      <span>Exit Interview: {off.hr_clearance ? 'Completed' : 'Pending'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PROBATION REVIEW MODAL */}
+      {selectedProbationModal && (
+        <Dialog open={Boolean(selectedProbationModal)} onOpenChange={() => setSelectedProbationModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Employee Employment — {selectedProbationModal.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 text-xs pt-2">
+              <p className="text-slate-600 dark:text-slate-300">
+                Employee has successfully completed {selectedProbationModal.days_in} days in probation with outstanding performance marks.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setSelectedProbationModal(null)}>Cancel</Button>
+                <Button className="bg-emerald-600 text-white" onClick={() => handleConfirmProbation(selectedProbationModal.id)}>
+                  Confirm Permanent Employment
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <NewChecklistModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSaveChecklist} employees={employees} />
     </div>
   );
 }

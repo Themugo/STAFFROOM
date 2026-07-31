@@ -1,49 +1,115 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus, Search, Filter, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import EmployeeCard from "../components/staff/EmployeeCard";
-import OnboardingModal from "../components/staff/OnboardingModal";
-import AiChatPanel from "../components/shared/AiChatPanel";
+import {
+  Plus,
+  Search,
+  Filter,
+  Sparkles,
+  LayoutGrid,
+  List,
+  Download,
+  Upload,
+  UserPlus,
+  CheckSquare,
+  Square,
+  X,
+  Mail,
+  ShieldCheck,
+  RefreshCw,
+  SlidersHorizontal,
+  FileSpreadsheet
+} from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import EmployeeCard from "@/components/staff/EmployeeCard";
+import EmployeeDirectoryTable from "@/components/staff/EmployeeDirectoryTable";
+import EmployeeQuickPreviewDrawer from "@/components/staff/EmployeeQuickPreviewDrawer";
+import OnboardingModal from "@/components/staff/OnboardingModal";
+import AiChatPanel from "@/components/shared/AiChatPanel";
 
 const DEPARTMENTS = ["All", "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Design", "Legal", "Executive"];
 const STATUSES = ["All", "Active", "On Leave", "Terminated"];
+const LOCATIONS = ["All", "HQ - Austin, TX", "London, UK", "Singapore", "Remote"];
+const EMPLOYMENT_TYPES = ["All", "Full-Time", "Part-Time", "Contractor", "Intern"];
+
+const SAVED_VIEWS = [
+  { id: "all_active", label: "All Active Staff", dept: "All", status: "Active" },
+  { id: "eng_team", label: "Engineering Team", dept: "Engineering", status: "All" },
+  { id: "on_leave", label: "On Leave Today", dept: "All", status: "On Leave" },
+];
 
 export default function Staff() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+
+  // Filters & Views
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("All");
+  const [empTypeFilter, setEmpTypeFilter] = useState("All");
+  const [activeSavedView, setActiveSavedView] = useState("all_active");
+
+  // View Mode: 'grid' or 'table'
+  const [viewMode, setViewMode] = useState("table");
+
+  // Selection & Bulk Actions
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // Modals & Panels
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [quickPreviewEmp, setQuickPreviewEmp] = useState(null);
   const [aiOpen, setAiOpen] = useState(false);
 
-  const load = async () => {
+  const loadData = async () => {
     setLoadError(null);
     try {
       const data = await base44.entities.Employee.list("-created_date");
-      setEmployees(data);
+      setEmployees(data || []);
     } catch {
-      setLoadError("Failed to load employee data. Please try again.");
+      setLoadError("Failed to load employee directory. Please check connection.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const filtered = employees.filter(e => {
-    const matchSearch = !search || e.full_name?.toLowerCase().includes(search.toLowerCase())
-      || e.job_title?.toLowerCase().includes(search.toLowerCase())
-      || e.email?.toLowerCase().includes(search.toLowerCase());
+  const handleApplySavedView = (view) => {
+    setActiveSavedView(view.id);
+    setDeptFilter(view.dept);
+    setStatusFilter(view.status);
+  };
+
+  const filtered = employees.filter((e) => {
+    const matchSearch =
+      !search ||
+      e.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      e.job_title?.toLowerCase().includes(search.toLowerCase()) ||
+      e.email?.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === "All" || e.department === deptFilter;
     const matchStatus = statusFilter === "All" || (e.status || "Active") === statusFilter;
-    return matchSearch && matchDept && matchStatus;
+    const matchLocation = locationFilter === "All" || (e.location || "HQ - Austin, TX") === locationFilter;
+    const matchEmpType = empTypeFilter === "All" || (e.employment_type || "Full-Time") === empTypeFilter;
+
+    return matchSearch && matchDept && matchStatus && matchLocation && matchEmpType;
   });
+
+  // Selection Handlers
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === filtered.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filtered.map((e) => e.id));
+    }
+  };
 
   const handleSave = async (data) => {
     try {
@@ -54,90 +120,292 @@ export default function Staff() {
       }
       setModalOpen(false);
       setEditing(null);
-      load();
+      loadData();
     } catch {
-      alert("Failed to save employee. Please try again.");
+      alert("Failed to save employee record.");
     }
   };
 
-  const handleEdit = (emp) => { setEditing(emp); setModalOpen(true); };
+  const handleEdit = (emp) => {
+    setEditing(emp);
+    setModalOpen(true);
+  };
+
   const handleDelete = async (id) => {
-    if (!confirm("Delete this employee?")) return;
+    if (!confirm("Are you sure you want to delete this employee record?")) return;
     try {
       await base44.entities.Employee.delete(id);
-      load();
+      loadData();
     } catch {
-      alert("Failed to delete employee. Please try again.");
+      alert("Failed to delete employee record.");
     }
+  };
+
+  // Export Selected to CSV
+  const handleExportCSV = () => {
+    const listToExport = selectedIds.length > 0 ? employees.filter((e) => selectedIds.includes(e.id)) : filtered;
+    const headers = ["ID", "Full Name", "Email", "Job Title", "Department", "Status", "Hire Date", "Base Salary"];
+    const csvRows = [
+      headers.join(","),
+      ...listToExport.map((e) =>
+        [e.id, `"${e.full_name}"`, e.email, `"${e.job_title}"`, e.department, e.status, e.hire_date, e.base_salary].join(",")
+      ),
+    ];
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `staffroom_directory_export_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Staff Directory</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{employees.length} employees total</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setAiOpen(true)} variant="outline" className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50">
-            <Sparkles className="w-4 h-4" /> HR Assistant
-          </Button>
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }}
-            className="text-white gap-2" style={{ background: "#0F1B2D" }}>
-            <Plus className="w-4 h-4" /> Add Employee
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Staff Directory & Roster"
+        description="Comprehensive enterprise workforce directory, role management, and organizational intelligence."
+        badge={`${employees.length} Total Workforce`}
+        icon={UserPlus}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setAiOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-xs hover:bg-amber-100 transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>HR Assistant</span>
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-200 dark:shadow-none transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Employee</span>
+            </button>
+          </div>
+        }
+      />
 
       {loadError && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-700">
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 text-xs font-bold text-rose-700 dark:text-rose-300">
           {loadError}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-9" placeholder="Search by name, title or email…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={deptFilter} onValueChange={setDeptFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <Filter className="w-3 h-3 mr-2 text-gray-400" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-        </Select>
+      {/* Saved Views Bar */}
+      <div className="flex items-center gap-2 pb-1 overflow-x-auto custom-scrollbar">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">Saved Views:</span>
+        {SAVED_VIEWS.map((view) => (
+          <button
+            key={view.id}
+            onClick={() => handleApplySavedView(view)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              activeSavedView === view.id
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            {view.label}
+          </button>
+        ))}
       </div>
 
-      {/* Grid */}
+      {/* Search & Advanced Filters Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* Main Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by full name, job title, email, or employee ID..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filters Group */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={deptFilter}
+              onChange={(e) => {
+                setDeptFilter(e.target.value);
+                setActiveSavedView(null);
+              }}
+              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  Dept: {d}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setActiveSavedView(null);
+              }}
+              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  Status: {s}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden sm:block"
+            >
+              {LOCATIONS.map((l) => (
+                <option key={l} value={l}>
+                  Location: {l}
+                </option>
+              ))}
+            </select>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setViewMode("table")}
+                className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+                  viewMode === "table"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                }`}
+                title="Data Table View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                }`}
+                title="Card Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bulk Actions Banner */}
+        {selectedIds.length > 0 && (
+          <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-3 animate-in fade-in duration-150">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-black text-xs flex items-center justify-center">
+                {selectedIds.length}
+              </span>
+              <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                {selectedIds.length} employee{selectedIds.length > 1 ? "s" : ""} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCSV}
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+              >
+                Export Selected
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="p-1 text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200 cursor-pointer"
+                title="Deselect All"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Roster View */}
       {loading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" />
+        <div className="py-20 text-center space-y-3">
+          <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mx-auto" />
+          <p className="text-xs text-slate-400 font-medium">Loading employee directory...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-24 text-gray-400">
-          <p className="text-lg font-medium">No employees found</p>
-          <p className="text-sm mt-1">Try adjusting your filters or add a new employee.</p>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-12 text-center max-w-md mx-auto my-8">
+          <SlidersHorizontal className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">No Matching Employees</h3>
+          <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search query to find staff members.</p>
+          <button
+            onClick={() => {
+              setSearch("");
+              setDeptFilter("All");
+              setStatusFilter("All");
+              setLocationFilter("All");
+            }}
+            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
+          >
+            Reset Filters
+          </button>
         </div>
+      ) : viewMode === "table" ? (
+        <EmployeeDirectoryTable
+          employees={filtered}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
+          onSelectAll={handleSelectAll}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onQuickPreview={setQuickPreviewEmp}
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(emp => (
+          {filtered.map((emp) => (
             <EmployeeCard key={emp.id} employee={emp} onEdit={handleEdit} onDelete={handleDelete} />
           ))}
         </div>
       )}
 
-      <OnboardingModal open={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }}
-        onSave={handleSave} employee={editing} />
+      {/* Add / Edit Onboarding Modal */}
+      <OnboardingModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setEditing(null);
+        }}
+        onSave={handleSave}
+        employee={editing}
+      />
 
+      {/* Quick Preview Drawer */}
+      <EmployeeQuickPreviewDrawer
+        employee={quickPreviewEmp}
+        onClose={() => setQuickPreviewEmp(null)}
+        onEdit={handleEdit}
+      />
+
+      {/* AI HR Policy Assistant Drawer */}
       {aiOpen && (
         <AiChatPanel
           agentName="hr_policy_assistant"

@@ -530,3 +530,252 @@ pass on each file's `load()` function specifically and hadn't re-checked
 every other handler within files I'd already partially reviewed.
 
 
+## `LeavePolicyModal.jsx` — a broken dropdown option from an invalid prop type
+
+While cross-referencing every field the leave policy and accrual-rule
+config forms expose against where they're actually consumed (the same
+category of check that had found the dead `gender_restricted` stub),
+found `<SelectItem value={null}>` on the "No restriction" option of the
+Gender Restriction dropdown.
+
+Radix UI's `Select.Item` requires a non-empty **string** value — it can't
+take `null`, and (a well-known Radix gotcha) it can't take `""` either,
+since that's reserved internally to mean "nothing selected." The form's
+actual stored default for this field is `""`, which meant no `SelectItem`
+in the list structurally matched the tracked value in the first place —
+confirmed by checking the Select component's own internal `context.value
+=== value` comparisons in `@radix-ui/react-select`'s source, which use
+strict equality and would never match `""` against `null`. Fixed using the
+standard pattern for this situation: a real string sentinel (`"none"`) on
+the item, translated back to `""` in `onValueChange`. Checked the rest of
+the codebase for the same `value={null}` or bare `value=""` anti-patterns
+on `SelectItem` — this was the only instance.
+
+Also fully reviewed `AccrualRuleModal.jsx` (hadn't been read end-to-end
+before) and cross-referenced every field it exposes against the accrual
+calculation logic in `src/utils/leaveBalance.js` — everything it exposes
+(`accrual_method`, `fixed_days`, `monthly_rate`, `accrual_cap`,
+`tenure_bands`, `applies_to_employment_types`, `applies_to_departments`,
+`prorate_on_join`, `is_active`) is genuinely consumed. The only fields not
+read by the calculation are `carry_over_enabled`/`carry_over_max_days`/
+`carry_over_expiry_months`, which was already disclosed as a known scope
+boundary when that calculation was originally wired in — not a new gap.
+
+## Closed a real gap: `Leave.jsx` itself had 7 unguarded action handlers
+
+While doing a systematic field-name cross-reference (the same method that
+found the previous bugs), noticed `ApprovalNotification.create()` calls in
+`Leave.jsx` with no try/catch around them — which was surprising, since
+this file's `loadAll`/`reload` had already been fixed earlier in this
+document. Checked every handler in the file individually and found that
+fix had only ever touched the page-load functions: `handleSave`,
+`handleDecision`, `handleSavePolicy`, `handleDeletePolicy`,
+`handleSaveAccrualRule`, `handleDeleteAccrualRule`, and `handleRunAccrual`
+— seven action handlers on one of the most important pages in the app,
+including the actual leave approve/reject decision itself — had never been
+touched. Fixed all seven, with two deliberate design choices:
+
+- `handleSave` and `handleDecision` each do a core action (create the
+  leave request; record the approve/reject decision) followed by secondary
+  logging (an `ApprovalNotification` audit record) and, for decisions, a
+  notification email. The core actions now surface a real error and stop
+  if they fail. The secondary logging/email stays best-effort (matching
+  the fire-and-forget pattern the email send already used) — a manager
+  successfully approving a request shouldn't see an error and risk
+  double-processing it just because an audit-log write failed afterward.
+- `handleRunAccrual` had the same "one failure kills the whole batch" bug
+  already fixed twice elsewhere this session (`BulkUploadModal.jsx`,
+  `Payroll.jsx`'s `runAutoApprove`) — one employee's balance update failing
+  threw out of the loop, silently abandoning every employee after them.
+  Fixed the same way: continues through the full roster, reports who
+  failed.
+
+Also fixed the same shape of bug in `toggleTask` (Onboarding checklist
+detail view, clicking an individual task checkbox) — found while doing a
+complete, deterministic inventory of every `async (` function declaration
+across every page and component in the codebase (69 total), checked one by
+one against what had actually been fixed rather than trusted to a grep
+count. Every other function in that inventory matched something already
+covered — this is the most exhaustive verification pass of the session,
+and it only turned up these two files, both now fixed.
+
+## A timezone bug affecting "today" across six different features
+
+Went looking for date-handling bugs specifically, since two of the highest
+-value fixes this session were date-math errors. Found a different, more
+fundamental issue: six places computed "today's date" (or "this month") as
+`new Date().toISOString().split("T")[0]` (or `.slice(0,7)` for
+year-month).
+
+`toISOString()` converts to UTC *before* formatting. For any timezone
+ahead of UTC — which includes most of Europe, Asia, and Australia —
+that conversion means for a window of hours right after local midnight
+(before UTC has also crossed into the new day), this silently returns
+**yesterday's** date. Verified concretely by running the actual comparison
+under `TZ=Europe/Bucharest`: at 01:00 local time, `toISOString().split
+("T")[0]` reports `2026-07-23` while the real local date is `2026-07-24`.
+Under `TZ=America/New_York` (a negative offset), the same moment doesn't
+trigger the bug — which is exactly why this kind of issue is easy to miss
+if development and testing both happen in a US timezone.
+
+This affected:
+- **`Attendance.jsx`** — the `today` used to match quick check-in/check-out
+  against existing records. In the affected window, checking in would look
+  for (and create) a record dated yesterday instead of today.
+- **`Leave.jsx`** — the `reviewed_date` stamped on an approve/reject
+  decision.
+- **`AttendanceLogModal.jsx`** and **performance `ReviewModal.jsx`** — the
+  default date pre-filled when opening either modal to log a new record.
+- **`Benefits.jsx`** — the default `enrollment_date` when creating an
+  enrollment from the benefits catalog.
+- **`SelfService.jsx`** — "this month's" attendance stats (present days,
+  late days, absences) on the employee's own dashboard; same mechanism, one
+  month-boundary window instead of a day-boundary one.
+
+Fixed all six by extracting a shared `src/utils/date.js` with
+`todayLocal()`/`thisMonthLocal()`, built on `date-fns`'s `format()` —
+which operates on the Date object's local time components, the same way
+`.getFullYear()`/`.getMonth()`/`.getDate()` already do, so it doesn't have
+this problem. Checked `AttendanceDashboard.jsx`'s own month-list generator
+too, since it's month-heavy — it already used `.getFullYear()`/
+`.getMonth()` directly rather than `toISOString()`, so it was already
+correct and didn't need changing. Verified no other `toISOString().split`
+or `.slice(0,7)` date-string patterns remain anywhere in the codebase.
+
+## Finished reading every remaining file, and found two more dead components
+
+Read the last handful of files not yet explicitly confirmed:
+`PendingApprovalsBanner.jsx`, `LeaveBalanceCard.jsx`, `AccrualConfigTab.jsx`,
+and `Layout.jsx`.
+
+**`LeaveBalanceCard.jsx`** — confirmed via search to be imported nowhere
+(and, as established earlier in this document, this app has no dynamic
+`import()`/`lazy()` usage anywhere that could hide a reference from that
+search). A third dead file, same category as `HRDocumentsTab.jsx`/
+`MyDocumentsTab.jsx` found earlier. Removed.
+
+**`EmployeeModal.jsx`** — also confirmed unused. Investigated *why*, since
+this one was less obvious: `Staff.jsx` handles both creating and editing
+employees, but does it through `OnboardingModal.jsx` (the multi-step
+wizard with AI salary suggestions), not through this simpler form. Verified
+`OnboardingModal` genuinely handles both modes correctly before concluding
+this was safe to remove — it has an `isEdit = !!employee` flag that
+correctly pre-fills the form from an existing employee, changes the header/
+button text ("Edit Employee"/"Save Changes" vs. "New Employee Onboarding"/
+"Add Employee"), and its final `onSave()` call only submits `Employee`-
+shaped fields — it doesn't also try to spawn onboarding-checklist records
+for what might be an existing, already-onboarded employee being edited.
+With that confirmed sound, `EmployeeModal.jsx` was a genuine, safe-to-remove
+duplicate. Removed.
+
+Also systematically checked every remaining component in `src/components/`
+for zero external references (the same method that found the first two
+dead files), to make sure there wasn't a fourth. The only other results
+were expected: unused shadcn/ui library primitives that ship as part of
+the design system but aren't all used by this particular app (normal,
+not app-specific dead code — not touched), and `ProtectedRoute.jsx`
+(already known, already fixed earlier in this document).
+
+**This completes a full read of every source file in the application.**
+Every `.jsx`/`.js`/`.ts` file under `src/` (excluding the standard shadcn
+`components/ui/` library) has now been individually reviewed at least once
+this session.
+
+## A round of targeted checks that came up clean, plus one small cleanup
+
+Checked several more specific bug categories across the whole codebase:
+
+- **Search/filter case-sensitivity** — every search box in the app
+  (`Attendance`, `Benchmarking`, `Benefits`, `Documents`, `Leave`,
+  `Payroll`, `Performance`, `Promotions`, `Signatures`, `Staff`) uses a
+  consistent `.toLowerCase()` comparison on both sides. All clean.
+- **Currency/number formatting**, especially around negative values (over
+  -budget variances, promotion deltas) — checked every `$...toLocaleString()`
+  site. All handle sign correctly (e.g. `DepartmentBudgetRow.jsx` only
+  shows "+$Xk" for positive promotion impact, and only shows "Over by $Xk"
+  text when actually over budget, so the subtraction behind it is always
+  positive at that point). No formatting bugs found.
+- **`setTimeout`/`setInterval` stale-closure risks** — only two usages in
+  the whole app; one is unmodified shadcn boilerplate, the other
+  (`Settings.jsx`) uses a functional state update with nothing stale to
+  capture. Clean.
+- **`useMemo` dependency arrays** app-wide (`AttendanceDashboard.jsx`,
+  `TeamCalendar.jsx`, `Benchmarking.jsx`, `Budget.jsx`) — checked every one
+  against what its function body actually reads. All correct except one
+  already fixed in this document (`TeamCalendar.jsx`'s `dayStats`, which
+  still listed `filteredStaff` as a dependency after that data stopped
+  being used in it).
+
+While checking `Budget.jsx`'s memos, noticed `actualByDept` computed a
+department-level payroll sum from real `PayrollRecord` data (a `map`
+variable) and then discarded it entirely, returning a *different*
+calculation (`bySalary`, built from `employee.base_salary`) instead — not
+a bug, this was already a documented, deliberate choice from when the file
+was first reviewed early in this session (base_salary is a more reliable
+annual figure than trying to annualize partial-year payroll records). But
+the discarded computation was genuinely dead code, and pulled in
+`payrollRecords` as a dependency it didn't need. Removed the dead
+computation, corrected the memo's dependency array, and — since nothing
+else in the file read `payrollRecords` either — removed the now-pointless
+`PayrollRecord.list()` fetch entirely, saving an unnecessary network
+request on every Budget page load.
+
+## Negative-value validation on money and budget fields
+
+Checked every `type="number"` input in the app for a `min` constraint.
+Found several money fields with none — most seriously in
+`PayrollModal.jsx`, where `netPay = base + bonus - deductions - tax`. A
+mistyped negative deduction or tax value doesn't just fail to reduce net
+pay, it *increases* it — verified concretely: entering deductions as
+`-1000` instead of `1000` produces a net pay of $5700 instead of the
+correct $3700, a $2000 swing (double the deduction, since subtracting a
+negative is the same as adding it).
+
+Before assuming `min="0"` would fix each one, checked whether the
+surrounding form actually uses native HTML `<form onSubmit>` submission —
+that's what makes the browser's built-in constraint validation actually
+block submission of an out-of-range value. It does in `PayrollModal.jsx`
+and `Benefits.jsx`, so `min="0"` alone is real, working protection there.
+`OnboardingModal.jsx`, `PromotionRequestModal.jsx`, and
+`BudgetSetupModal.jsx` don't use a `<form>` at all — their submit buttons
+are plain `onClick` handlers, so `min="0"` on those would only be a visual
+cue with no actual enforcement. Added explicit validation in each of those
+three submit handlers (rejecting negative salary/budget values before
+calling `onSave`), plus `min="0"` everywhere as the visual/spinner-button
+cue on top of whichever enforcement actually applies.
+
+Fields covered: `PayrollModal.jsx` (base pay, bonus, deductions, tax — plus
+a sane `min="2000"` on pay period year), `OnboardingModal.jsx` (base
+salary), `PromotionRequestModal.jsx` (current and proposed salary),
+`Benefits.jsx` (monthly cost, employer contribution), and
+`BudgetSetupModal.jsx` (department annual budget). Checked
+`GoalModal.jsx`'s progress field too, since it's also numeric — it already
+uses a native `<input type="range" min={0} max={100}>`, which is correctly
+bounded by construction, so nothing to fix there.
+
+## A soft duplicate-enrollment warning in Benefits
+
+Checked the rest of the app for duplicate-prevention gaps. Signature
+request signers already correctly prevent duplicates (the dropdown only
+offers employees not already added, and `addSigner` guards against it
+too) — no issue there.
+
+`Benefits.jsx` had no check at all for an employee ending up with two
+"Active" enrollments of the same `benefit_type` — which matters beyond
+just being messy data, since the summary cards at the top of the page
+(Total Monthly Cost, Employer Monthly) sum `monthly_cost`/
+`employer_contribution` across all Active enrollments, so an accidental
+duplicate silently inflates those totals.
+
+Deliberately did **not** implement this as a hard block. Two active
+enrollments of the same benefit type could be a genuine mistake, or could
+be legitimate — e.g. a mid-year plan switch where the old enrollment
+hasn't been marked Inactive yet — and nothing in this app's data model
+distinguishes those cases. Added a soft, informational warning instead
+(same non-blocking pattern already used for leave policy warnings
+elsewhere in the app): if the selected employee already has an active
+enrollment of the same benefit type, the form shows which plan, but still
+lets the person proceed. Verified the check against 5 cases, including the
+two easy ways to get this wrong — warning against the record being edited
+itself, and counting inactive enrollments as duplicates when they
+shouldn't be — both handled correctly.

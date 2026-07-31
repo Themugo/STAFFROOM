@@ -14,7 +14,7 @@ import PageHeader from '../components/ui/PageHeader'
 import StatCard from '../components/ui/StatCard'
 import EmptyState from '../components/ui/EmptyState'
 import Spinner from '../components/ui/Spinner'
-import Tabs from '../components/ui/Tabs'
+import Tabs from '../components/ui/CustomTabs'
 import { formatCurrency, formatDate, formatPercent } from '../lib/format'
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']

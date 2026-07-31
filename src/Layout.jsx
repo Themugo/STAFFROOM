@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard,
@@ -7,8 +7,9 @@ import {
   DollarSign,
   Menu,
   X,
-  Building2,
   ChevronRight,
+  ChevronDown,
+  ChevronLeft,
   FileBarChart2,
   CalendarCheck,
   Settings,
@@ -23,130 +24,353 @@ import {
   SlidersHorizontal,
   ArrowUpCircle,
   PieChart,
-  Scale
+  Scale,
+  Search,
+  Star,
+  Plus,
+  Clock,
+  Sparkles,
+  Command,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ShieldCheck,
+  BookOpen,
+  Calendar,
+  Briefcase
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import CommandPalette from "@/components/navigation/CommandPalette";
+import NotificationsPopover from "@/components/navigation/NotificationsPopover";
+import TaskCenterPopover from "@/components/navigation/TaskCenterPopover";
+import QuickCreateMenu from "@/components/navigation/QuickCreateMenu";
+import OrganizationSwitcher from "@/components/navigation/OrganizationSwitcher";
+import UserMenuDropdown from "@/components/navigation/UserMenuDropdown";
+import Breadcrumbs from "@/components/navigation/Breadcrumbs";
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-  { label: "Staff", icon: Users, page: "Staff" },
-  { label: "Payroll", icon: DollarSign, page: "Payroll" },
-  { label: "Attendance", icon: CalendarCheck, page: "Attendance" },
-  { label: "Leave", icon: Palmtree, page: "Leave" },
-  { label: "Documents", icon: FileText, page: "Documents" },
-  { label: "Benefits", icon: Heart, page: "Benefits" },
-  { label: "Performance", icon: TrendingUp, page: "Performance" },
-  { label: "Calibration", icon: SlidersHorizontal, page: "Calibration" },
-  { label: "Promotions", icon: ArrowUpCircle, page: "Promotions" },
-  { label: "Budget", icon: PieChart, page: "Budget" },
-  { label: "Benchmarking", icon: Scale, page: "Benchmarking" },
-  { label: "Onboarding", icon: ListChecks, page: "Onboarding" },
-  { label: "Org Chart", icon: GitBranch, page: "OrgChart" },
-  { label: "Signatures", icon: FilePen, page: "Signatures" },
-  { label: "Self-Service", icon: UserCircle, page: "SelfService" },
-  { label: "Reports", icon: FileBarChart2, page: "Reports" },
-  { label: "Settings", icon: Settings, page: "Settings" },
+const NAV_GROUPS = [
+  {
+    title: "Core Workforce",
+    items: [
+      { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
+      { label: "Staff Directory", icon: Users, page: "Staff" },
+      { label: "Approval Hub", icon: ShieldCheck, page: "ApprovalCenter" },
+      { label: "Org Chart", icon: GitBranch, page: "OrgChart" },
+      { label: "Onboarding", icon: ListChecks, page: "Onboarding" },
+      { label: "Self-Service", icon: UserCircle, page: "SelfService" },
+    ],
+  },
+  {
+    title: "Time & Operations",
+    items: [
+      { label: "Attendance Logs", icon: CalendarCheck, page: "Attendance" },
+      { label: "Leave Planner", icon: Palmtree, page: "Leave" },
+      { label: "Duty Roster & Shifts", icon: Calendar, page: "DutyRoster" },
+    ],
+  },
+  {
+    title: "Financials & Payroll",
+    items: [
+      { label: "Payroll & Tasks", icon: DollarSign, page: "Payroll" },
+      { label: "Budget Planner", icon: PieChart, page: "Budget" },
+      { label: "Benchmarking", icon: Scale, page: "Benchmarking" },
+    ],
+  },
+  {
+    title: "Talent & Growth",
+    items: [
+      { label: "Recruitment ATS", icon: Briefcase, page: "Recruitment" },
+      { label: "Performance", icon: TrendingUp, page: "Performance" },
+      { label: "Calibration", icon: SlidersHorizontal, page: "Calibration" },
+      { label: "Promotions", icon: ArrowUpCircle, page: "Promotions" },
+      { label: "Benefits", icon: Heart, page: "Benefits" },
+    ],
+  },
+  {
+    title: "Governance & Policies",
+    items: [
+      { label: "Policy Center", icon: BookOpen, page: "PolicyCenter" },
+      { label: "Documents", icon: FileText, page: "Documents" },
+      { label: "Signatures", icon: FilePen, page: "Signatures" },
+      { label: "Reports & Audit", icon: FileBarChart2, page: "Reports" },
+      { label: "Settings", icon: Settings, page: "Settings" },
+    ],
+  },
 ];
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [pinnedPages, setPinnedPages] = useState(() => {
+    try {
+      const saved = localStorage.getItem("staffroom_pinned");
+      return saved ? JSON.parse(saved) : ["Dashboard", "Staff", "Payroll", "Attendance"];
+    } catch {
+      return ["Dashboard", "Staff", "Payroll", "Attendance"];
+    }
+  });
+
+  const { user } = useAuth() || {};
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("staffroom_pinned", JSON.stringify(pinnedPages));
+    } catch {
+      // Ignore write errors
+    }
+  }, [pinnedPages]);
+
+  const togglePin = (e, page) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPinnedPages((prev) =>
+      prev.includes(page) ? prev.filter((p) => p !== page) : [...prev, page]
+    );
+  };
+
+  const toggleGroup = (groupTitle) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [groupTitle]: !prev[groupTitle],
+    }));
+  };
+
+  const allItems = NAV_GROUPS.flatMap((g) => g.items);
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] flex">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        :root {
-          --navy: #0F1B2D;
-          --navy-mid: #1A2D45;
-          --gold: #D4A843;
-          --gold-light: #F0C96B;
-        }
-      `}</style>
-
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col w-64 transition-transform duration-300",
-          "md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 shadow-2xl",
+          sidebarCollapsed ? "w-20" : "w-64",
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
-        style={{ background: "var(--navy)" }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-white/10">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--gold)" }}>
-            <Building2 className="w-5 h-5 text-white" />
+        {/* Brand Header */}
+        <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
+          <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 group overflow-hidden">
+            <div className="w-9 h-9 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:bg-indigo-500 transition-all shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            {!sidebarCollapsed && (
+              <div className="animate-in fade-in duration-200">
+                <span className="text-white font-extrabold text-lg tracking-tight block">STAFFROOM</span>
+                <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block -mt-1">Enterprise HR</span>
+              </div>
+            )}
+          </Link>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden md:flex p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+            <button
+              className="md:hidden text-slate-400 hover:text-white p-1"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div>
-            <p className="text-white font-semibold text-sm">StaffCore</p>
-            <p className="text-white/40 text-xs">Management Suite</p>
-          </div>
+        </div>
+
+        {/* Organization Switcher Component */}
+        <OrganizationSwitcher isCollapsed={sidebarCollapsed} />
+
+        {/* Global Search Trigger in Sidebar */}
+        <div className="px-3 py-1">
           <button
-            className="ml-auto md:hidden text-white/60 hover:text-white"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setCommandPaletteOpen(true)}
+            className={cn(
+              "w-full flex items-center justify-between p-2.5 rounded-2xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 text-slate-400 hover:text-slate-200 text-xs transition-colors cursor-pointer",
+              sidebarCollapsed && "justify-center"
+            )}
+            title="Quick Search (Ctrl+K)"
           >
-            <X className="w-5 h-5" />
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-indigo-400 shrink-0" />
+              {!sidebarCollapsed && <span>Quick Search...</span>}
+            </div>
+            {!sidebarCollapsed && (
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-900 text-[10px] font-bold text-slate-400 border border-slate-700">
+                <Command className="w-2.5 h-2.5" /> K
+              </kbd>
+            )}
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          {navItems.map(({ label, icon: Icon, page }) => {
-            const active = currentPageName === page;
+        {/* Navigation Items (Grouped & Scrollable) */}
+        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto custom-scrollbar">
+          {/* Pinned Favorites Section */}
+          {pinnedPages.length > 0 && (
+            <div>
+              {!sidebarCollapsed && (
+                <div className="px-3 py-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <span>Pinned Favorites</span>
+                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                </div>
+              )}
+              <div className="space-y-0.5 mt-1">
+                {pinnedPages.map((page) => {
+                  const item = allItems.find((i) => i.page === page);
+                  if (!item) return null;
+                  const Icon = item.icon;
+                  const active = currentPageName === page;
+                  return (
+                    <Link
+                      key={page}
+                      to={createPageUrl(page)}
+                      onClick={() => setSidebarOpen(false)}
+                      title={sidebarCollapsed ? item.label : undefined}
+                      className={cn(
+                        "group/nav flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all",
+                        sidebarCollapsed && "justify-center px-2",
+                        active
+                          ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
+                          : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                      )}
+                    >
+                      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-indigo-400" : "text-slate-400 group-hover/nav:text-slate-200")} />
+                      {!sidebarCollapsed && <span className="truncate flex-1">{item.label}</span>}
+                      {!sidebarCollapsed && (
+                        <button
+                          onClick={(e) => togglePin(e, page)}
+                          className="opacity-0 group-hover/nav:opacity-100 p-0.5 hover:text-amber-400 transition-opacity"
+                          title="Unpin"
+                        >
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        </button>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Grouped Modules */}
+          {NAV_GROUPS.map((group) => {
+            const isCollapsed = collapsedGroups[group.title];
             return (
-              <Link
-                key={page}
-                to={createPageUrl(page)}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                  active
-                    ? "text-white"
-                    : "text-white/50 hover:text-white hover:bg-white/5"
+              <div key={group.title}>
+                {!sidebarCollapsed && (
+                  <button
+                    onClick={() => toggleGroup(group.title)}
+                    className="w-full px-3 py-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <span>{group.title}</span>
+                    {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
                 )}
-                style={active ? { background: "var(--navy-mid)", boxShadow: "inset 3px 0 0 var(--gold)" } : {}}
-              >
-                <Icon className={cn("w-4 h-4", active ? "text-amber-400" : "group-hover:text-white/70")} />
-                <span className="text-sm font-medium">{label}</span>
-                {active && <ChevronRight className="w-3 h-3 ml-auto text-amber-400/60" />}
-              </Link>
+
+                {(!isCollapsed || sidebarCollapsed) && (
+                  <div className="space-y-0.5 mt-1">
+                    {group.items.map(({ label, icon: Icon, page }) => {
+                      const active = currentPageName === page;
+                      const isPinned = pinnedPages.includes(page);
+                      return (
+                        <Link
+                          key={page}
+                          to={createPageUrl(page)}
+                          onClick={() => setSidebarOpen(false)}
+                          title={sidebarCollapsed ? label : undefined}
+                          className={cn(
+                            "group/nav flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-all",
+                            sidebarCollapsed && "justify-center px-2",
+                            active
+                              ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30 shadow-xs"
+                              : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
+                          )}
+                        >
+                          <Icon className={cn("w-4 h-4 shrink-0", active ? "text-indigo-400" : "text-slate-400 group-hover/nav:text-slate-200")} />
+                          {!sidebarCollapsed && <span className="truncate flex-1">{label}</span>}
+                          {!sidebarCollapsed && (
+                            <button
+                              onClick={(e) => togglePin(e, page)}
+                              className={cn(
+                                "opacity-0 group-hover/nav:opacity-100 p-0.5 hover:text-amber-400 transition-opacity cursor-pointer",
+                                isPinned && "opacity-100 text-amber-400"
+                              )}
+                              title={isPinned ? "Unpin from top" : "Pin to top"}
+                            >
+                              <Star className={cn("w-3.5 h-3.5", isPinned ? "fill-amber-400 text-amber-400" : "text-slate-500")} />
+                            </button>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
-
-        <div className="px-6 py-4 border-t border-white/10">
-          <p className="text-white/20 text-xs">© 2026 StaffCore</p>
-        </div>
       </aside>
 
-      {/* Overlay */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Main */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4 flex items-center gap-4">
-          <button
-            className="md:hidden text-gray-600 hover:text-gray-900"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <h1 className="text-sm font-semibold text-gray-900">
-            {navItems.find(n => n.page === currentPageName)?.label || currentPageName}
-          </h1>
+      {/* Main Content Area */}
+      <div className={cn("flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300", sidebarCollapsed ? "md:ml-20" : "md:ml-64")}>
+        {/* Top Navigation Bar */}
+        <header className="h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+          <div className="flex items-center gap-4">
+            <button
+              className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <Breadcrumbs currentPageName={currentPageName} />
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Global Search Button */}
+            <button
+              onClick={() => setCommandPaletteOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search...</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 text-[10px] font-bold border border-slate-200 dark:border-slate-700 shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
+
+            {/* Quick Action Button */}
+            <QuickCreateMenu />
+
+            {/* Task Center & Approvals */}
+            <TaskCenterPopover />
+
+            {/* Notifications Popover */}
+            <NotificationsPopover />
+
+            {/* User Profile Menu */}
+            <UserMenuDropdown />
+          </div>
         </header>
 
-        <main className="flex-1 p-6">
+        {/* Body View */}
+        <main className="flex-1 p-4 sm:p-6 md:p-8 flex flex-col gap-6 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
+
+      {/* Command Palette Modal */}
+      <CommandPalette isOpen={commandPaletteOpen} onClose={setCommandPaletteOpen} />
     </div>
   );
 }

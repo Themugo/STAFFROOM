@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, ChevronLeft, ChevronRight, Clock, CheckCircle2, XCircle, Sparkles, Settings2, Calculator } from "lucide-react";
+import {
+  Plus, Search, ChevronLeft, ChevronRight, Clock, CheckCircle2, XCircle,
+  Sparkles, Settings2, Calculator, Download, Check, ShieldAlert
+} from "lucide-react";
 import { format, addMonths, subMonths } from "date-fns";
 import LeaveRequestModal from "../components/leave/LeaveRequestModal";
 import ReviewModal from "../components/leave/ReviewModal";
@@ -16,13 +19,15 @@ import LeavePolicyTab from "../components/leave/LeavePolicyTab";
 import LeaveBalancesTab from "../components/leave/LeaveBalancesTab";
 import AccrualConfigTab from "../components/leave/accrual/AccrualConfigTab";
 import PendingApprovalsBanner from "../components/leave/PendingApprovalsBanner";
+import AbsenceConflictBanner from "../components/leave/AbsenceConflictBanner";
 import { computeEntitled } from "@/utils/leaveBalance";
 
 const STATUS_STYLE = {
-  Pending: "bg-amber-50 text-amber-700 border-amber-200",
-  Approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Rejected: "bg-red-50 text-red-700 border-red-200",
+  Pending: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400",
+  Approved: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400",
+  Rejected: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400",
 };
+
 const STATUS_ICON = {
   Pending: <Clock className="w-3 h-3" />,
   Approved: <CheckCircle2 className="w-3 h-3" />,
@@ -30,13 +35,15 @@ const STATUS_ICON = {
 };
 
 const TYPE_COLORS = {
-  Annual: "bg-blue-50 text-blue-700 border-blue-200",
-  Sick: "bg-red-50 text-red-700 border-red-200",
-  Unpaid: "bg-gray-100 text-gray-600 border-gray-200",
-  Maternity: "bg-pink-50 text-pink-700 border-pink-200",
-  Paternity: "bg-violet-50 text-violet-700 border-violet-200",
-  Compassionate: "bg-amber-50 text-amber-700 border-amber-200",
-  Study: "bg-teal-50 text-teal-700 border-teal-200",
+  Annual: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
+  "Annual Leave": "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
+  Sick: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300",
+  "Sick Leave": "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300",
+  Unpaid: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300",
+  Maternity: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300",
+  Paternity: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300",
+  Compassionate: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300",
+  Study: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300",
 };
 
 export default function Leave() {
@@ -55,6 +62,9 @@ export default function Leave() {
   const [reviewing, setReviewing] = useState(null);
   const [calMonth, setCalMonth] = useState(new Date());
   const [aiOpen, setAiOpen] = useState(false);
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const loadAll = () => {
     setLoadError(null);
@@ -84,10 +94,16 @@ export default function Leave() {
   const reload = () => base44.entities.LeaveRequest.list("-created_date").then(setRequests).catch(() => {});
 
   const handleSave = async (data) => {
-    const created = await base44.entities.LeaveRequest.create(data);
+    const created = await base44.entities.LeaveRequest.create({
+      ...data,
+      current_step: 1,
+      total_steps: 3,
+      approval_history: [
+        { step: 1, action: "SUBMITTED", timestamp: new Date().toISOString(), user: data.employee_name }
+      ]
+    });
     setAddOpen(false);
 
-    // Log notification record for new submission
     await base44.entities.ApprovalNotification.create({
       leave_request_id: created.id,
       employee_id: data.employee_id,
@@ -108,14 +124,24 @@ export default function Leave() {
   const handleDecision = async (id, status, manager_notes, requestObj) => {
     const today = new Date().toISOString().split("T")[0];
     const reviewedBy = currentUser?.full_name || currentUser?.email || "Manager";
+    
+    const req = requestObj || requests.find(r => r.id === id);
+    const existingHist = req?.approval_history || [];
+    const newHistItem = {
+      step: req?.current_step || 1,
+      action: status === "Approved" ? "APPROVED" : "REJECTED",
+      timestamp: new Date().toISOString(),
+      user: reviewedBy,
+      notes: manager_notes || ""
+    };
+
     await base44.entities.LeaveRequest.update(id, {
       status, manager_notes,
       reviewed_by: reviewedBy,
       reviewed_date: today,
+      approval_history: [...existingHist, newHistItem]
     });
 
-    // Log approval notification record
-    const req = requestObj || requests.find(r => r.id === id);
     if (req) {
       await base44.entities.ApprovalNotification.create({
         leave_request_id: id,
@@ -133,20 +159,77 @@ export default function Leave() {
         reviewed_by: reviewedBy,
         email_sent: false,
       });
-
-      // Send email notification to employee if email is available
-      if (req.employee_email) {
-        const verb = status === "Approved" ? "approved" : "rejected";
-        const emoji = status === "Approved" ? "✅" : "❌";
-        base44.integrations.Core.SendEmail({
-          to: req.employee_email,
-          subject: `${emoji} Your ${req.leave_type} leave request has been ${verb}`,
-          body: `Hi ${req.employee_name},\n\nYour ${req.leave_type} leave request from ${req.start_date} to ${req.end_date} (${req.days_requested} day${req.days_requested !== 1 ? "s" : ""}) has been <strong>${verb}</strong> by ${reviewedBy}.\n\n${manager_notes ? `Manager notes: ${manager_notes}\n\n` : ""}Please log in to the HR portal for more details.\n\nBest regards,\nHR Team`,
-        }).catch(() => null); // fire and forget
-      }
     }
 
     reload();
+  };
+
+  // Bulk actions
+  const toggleSelectRow = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (filteredItems) => {
+    const pendingItems = filteredItems.filter(r => r.status === 'Pending');
+    const allSelected = pendingItems.length > 0 && pendingItems.every(r => selectedIds.has(r.id));
+    
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        pendingItems.forEach(r => next.delete(r.id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => new Set([...prev, ...pendingItems.map(r => r.id)]));
+    }
+  };
+
+  const handleBulkDecision = async (status) => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    
+    for (const id of ids) {
+      const r = requests.find(req => req.id === id);
+      if (r && r.status === 'Pending') {
+        await handleDecision(id, status, "Bulk processed", r);
+      }
+    }
+    setSelectedIds(new Set());
+  };
+
+  // CSV Export
+  const exportCSV = () => {
+    const headers = ["Employee", "Department", "Leave Type", "Start Date", "End Date", "Days", "Status", "Reason"];
+    const rows = filtered.map(r => [
+      r.employee_name || "Unknown",
+      r.department || "",
+      r.leave_type || "",
+      r.start_date || "",
+      r.end_date || "",
+      r.days_requested || r.total_days || 0,
+      r.status || "Pending",
+      (r.reason || "").replace(/"/g, '""')
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `leave-operations-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleSavePolicy = async (data) => {
@@ -174,7 +257,6 @@ export default function Leave() {
     base44.entities.LeaveAccrual.list().then(setAccrualRules);
   };
 
-  // Recalculate accruals: update LeaveBalance entries for each employee
   const handleRunAccrual = async () => {
     const year = new Date().getFullYear();
     for (const emp of employees.filter(e => e.status !== "Terminated")) {
@@ -203,17 +285,18 @@ export default function Leave() {
   const allTypes = ["All", ...new Set(requests.map(r => r.leave_type).filter(Boolean))];
 
   const filtered = requests.filter(r => {
-    const ms = !search || r.employee_name?.toLowerCase().includes(search.toLowerCase());
+    const ms = !search || r.employee_name?.toLowerCase().includes(search.toLowerCase()) || r.reason?.toLowerCase().includes(search.toLowerCase());
     const ss = statusFilter === "All" || r.status === statusFilter;
     const ts = typeFilter === "All" || r.leave_type === typeFilter;
     return ms && ss && ts;
   });
 
   const pendingCount = requests.filter(r => r.status === "Pending").length;
+  const pendingSelectedCount = Array.from(selectedIds).filter(id => requests.find(r => r.id === id)?.status === 'Pending').length;
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-gray-200 border-t-indigo-600 rounded-full animate-spin" />
     </div>
   );
 
@@ -231,18 +314,26 @@ export default function Leave() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Leave Management</h2>
-          <p className="text-xs text-gray-400 mt-0.5">{requests.length} total requests · {pendingCount} pending · {policies.filter(p=>p.is_enabled).length} active leave types</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Leave Operations Center</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {requests.length} total requests · {pendingCount} pending approvals · {policies.filter(p=>p.is_enabled).length} active policies
+          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button onClick={() => setAiOpen(true)} variant="outline" className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50">
+          <Button onClick={exportCSV} variant="outline" className="gap-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
+            <Download className="w-4 h-4" /> Export CSV
+          </Button>
+          <Button onClick={() => setAiOpen(true)} variant="outline" className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300">
             <Sparkles className="w-4 h-4" /> AI Assistant
           </Button>
-          <Button onClick={() => setAddOpen(true)} className="text-white gap-2" style={{ background: "#0F1B2D" }}>
-            <Plus className="w-4 h-4" /> New Request
+          <Button onClick={() => setAddOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-600/20">
+            <Plus className="w-4 h-4" /> New Leave Request
           </Button>
         </div>
       </div>
+
+      {/* ── Departmental Absence Conflict Warning Banner ── */}
+      <AbsenceConflictBanner requests={requests} employees={employees} />
 
       {/* ── Pending approvals banner ── */}
       <PendingApprovalsBanner
@@ -252,15 +343,15 @@ export default function Leave() {
       />
 
       <Tabs defaultValue="requests">
-        <TabsList className="bg-gray-100 flex-wrap h-auto gap-1">
-          <TabsTrigger value="requests">Requests</TabsTrigger>
-          <TabsTrigger value="balances">Leave Balances</TabsTrigger>
-          <TabsTrigger value="calendar">Team Calendar</TabsTrigger>
-          <TabsTrigger value="insights">AI Insights</TabsTrigger>
-          <TabsTrigger value="policy" className="flex items-center gap-1.5">
-            <Settings2 className="w-3.5 h-3.5" /> Policy Settings
+        <TabsList className="bg-slate-100 dark:bg-slate-900 flex-wrap h-auto gap-1 p-1 rounded-xl">
+          <TabsTrigger value="requests" className="rounded-lg text-xs px-4">Leave Requests</TabsTrigger>
+          <TabsTrigger value="balances" className="rounded-lg text-xs px-4">Leave Balances & Accruals</TabsTrigger>
+          <TabsTrigger value="calendar" className="rounded-lg text-xs px-4">Workforce Calendar</TabsTrigger>
+          <TabsTrigger value="insights" className="rounded-lg text-xs px-4">Absence Analytics</TabsTrigger>
+          <TabsTrigger value="policy" className="flex items-center gap-1.5 rounded-lg text-xs px-4">
+            <Settings2 className="w-3.5 h-3.5" /> Policy Engine
           </TabsTrigger>
-          <TabsTrigger value="accrual" className="flex items-center gap-1.5">
+          <TabsTrigger value="accrual" className="flex items-center gap-1.5 rounded-lg text-xs px-4">
             <Calculator className="w-3.5 h-3.5" /> Accrual Config
           </TabsTrigger>
         </TabsList>
@@ -268,14 +359,14 @@ export default function Leave() {
         {/* ── REQUESTS TAB ── */}
         <TabsContent value="requests" className="space-y-4 mt-4">
           <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[180px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <Input className="pl-8 h-9 text-sm" placeholder="Search employee…" value={search} onChange={e => setSearch(e.target.value)} />
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <Input className="pl-8 h-9 text-sm" placeholder="Search employee name or reason..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-9 text-sm w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All Status</SelectItem>
+                <SelectItem value="All">All Statuses</SelectItem>
                 <SelectItem value="Pending">Pending</SelectItem>
                 <SelectItem value="Approved">Approved</SelectItem>
                 <SelectItem value="Rejected">Rejected</SelectItem>
@@ -289,53 +380,111 @@ export default function Leave() {
             </Select>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          {/* Bulk Action Bar */}
+          {pendingSelectedCount > 0 && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/40 dark:border-indigo-800 px-4 py-3 animate-fade-in">
+              <span className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                {pendingSelectedCount} pending request{pendingSelectedCount !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleBulkDecision('Approved')}>
+                  <Check className="w-3.5 h-3.5 mr-1" /> Approve Selected
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleBulkDecision('Rejected')}>
+                  <XCircle className="w-3.5 h-3.5 mr-1" /> Reject Selected
+                </Button>
+                <button onClick={() => setSelectedIds(new Set())} className="text-xs text-slate-500 hover:underline px-2">
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
             {filtered.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 text-sm">No leave requests found.</div>
+              <div className="text-center py-16 text-slate-400 text-sm">No leave requests found matching your filters.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-50 text-xs text-gray-400 font-medium bg-gray-50">
-                      <th className="text-left px-5 py-3">Employee</th>
-                      <th className="text-left px-4 py-3">Type</th>
-                      <th className="text-left px-4 py-3">Period</th>
-                      <th className="text-center px-4 py-3">Days</th>
-                      <th className="text-center px-4 py-3">Status</th>
-                      <th className="text-left px-4 py-3">Reason</th>
-                      <th className="px-4 py-3" />
+                    <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 font-semibold uppercase tracking-wider bg-slate-50 dark:bg-slate-800/50">
+                      <th className="w-10 px-4 py-3.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filtered.filter(r => r.status === 'Pending').length > 0 && filtered.filter(r => r.status === 'Pending').every(r => selectedIds.has(r.id))}
+                          onChange={() => toggleSelectAll(filtered)}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </th>
+                      <th className="text-left px-4 py-3.5">Employee</th>
+                      <th className="text-left px-4 py-3.5">Type</th>
+                      <th className="text-left px-4 py-3.5">Period</th>
+                      <th className="text-center px-4 py-3.5">Days</th>
+                      <th className="text-center px-4 py-3.5">Status & Step</th>
+                      <th className="text-left px-4 py-3.5">Reason</th>
+                      <th className="px-4 py-3.5" />
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(r => (
-                      <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                        <td className="px-5 py-3">
-                          <p className="font-medium text-gray-900">{r.employee_name}</p>
-                          <p className="text-xs text-gray-400">{r.department}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge className={`text-xs border ${TYPE_COLORS[r.leave_type] || "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                            {r.leave_type}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{r.start_date} → {r.end_date}</td>
-                        <td className="px-4 py-3 text-center font-semibold text-gray-800">{r.days_requested}</td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge className={`text-xs border inline-flex items-center gap-1 ${STATUS_STYLE[r.status]}`}>
-                            {STATUS_ICON[r.status]} {r.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-400 text-xs max-w-[160px] truncate">{r.reason || "—"}</td>
-                        <td className="px-4 py-3">
-                          {r.status === "Pending" && (
-                            <button onClick={() => setReviewing(r)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Review</button>
-                          )}
-                          {r.manager_notes && r.status !== "Pending" && (
-                            <span className="text-xs text-gray-300 italic truncate max-w-[100px] block" title={r.manager_notes}>"{r.manager_notes}"</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {filtered.map(r => {
+                      const daysVal = r.days_requested || r.total_days || 1;
+                      const isPending = r.status === 'Pending';
+                      return (
+                        <tr key={r.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(r.id)}
+                              disabled={!isPending}
+                              onChange={() => toggleSelectRow(r.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-30"
+                            />
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <p className="font-semibold text-slate-900 dark:text-white">{r.employee_name}</p>
+                            <p className="text-xs text-slate-400">{r.department || 'General'}</p>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <Badge className={`text-xs border ${TYPE_COLORS[r.leave_type] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                              {r.leave_type}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs">
+                            {r.start_date} → {r.end_date}
+                          </td>
+                          <td className="px-4 py-3.5 text-center font-semibold text-slate-800 dark:text-slate-200">
+                            {daysVal}
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              <Badge className={`text-xs border inline-flex items-center gap-1 ${STATUS_STYLE[r.status]}`}>
+                                {STATUS_ICON[r.status]} {r.status}
+                              </Badge>
+                              {isPending && (
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  Step {r.current_step || 1} of 3 (Mgr Review)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 text-xs max-w-[160px] truncate">
+                            {r.reason || "—"}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            {isPending && (
+                              <button onClick={() => setReviewing(r)} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap">
+                                Review & Decide
+                              </button>
+                            )}
+                            {r.manager_notes && !isPending && (
+                              <span className="text-xs text-slate-400 italic truncate max-w-[120px] block" title={r.manager_notes}>
+                                "{r.manager_notes}"
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -357,19 +506,19 @@ export default function Leave() {
 
         {/* ── TEAM CALENDAR TAB ── */}
         <TabsContent value="calendar" className="mt-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-semibold text-gray-900">{format(calMonth, "MMMM yyyy")}</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white">{format(calMonth, "MMMM yyyy")}</h3>
               <div className="flex items-center gap-2">
                 <button onClick={() => setCalMonth(m => subMonths(m, 1))}
-                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50">
-                  <ChevronLeft className="w-4 h-4 text-gray-500" />
+                  className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <ChevronLeft className="w-4 h-4 text-slate-500" />
                 </button>
                 <button onClick={() => setCalMonth(new Date())}
-                  className="text-xs px-3 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">Today</button>
+                  className="text-xs px-3 h-8 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">Today</button>
                 <button onClick={() => setCalMonth(m => addMonths(m, 1))}
-                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50">
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
             </div>

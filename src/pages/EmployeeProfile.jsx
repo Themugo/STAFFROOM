@@ -1,723 +1,371 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
 import {
-  Mail, Phone, Building2, Briefcase, Calendar, Users, FileText, Award,
-  Clock, DollarSign, MapPin, Camera, Edit2, MoreVertical, CheckCircle,
-  AlertCircle, XCircle, TrendingUp, GraduationCap, Upload, ArrowUpRight,
-} from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
-import { formatDate, formatCurrency } from '../lib/format'
-import {
-  StatusBadge, Avatar, EmptyState, PageHeader, Tabs, Spinner, DataTable,
-} from '../components/ui'
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Briefcase,
+  Building2,
+  DollarSign,
+  ShieldCheck,
+  Award,
+  FileText,
+  Laptop,
+  Clock,
+  Palmtree,
+  TrendingUp,
+  GraduationCap,
+  Edit3,
+  Plus,
+  ArrowLeft,
+  Download,
+  CheckCircle2,
+  AlertTriangle,
+  History,
+  FileCheck,
+  ExternalLink,
+  Sparkles,
+  Users,
+  ShieldAlert,
+  Layers,
+  Send,
+  KeyRound,
+  UserCheck,
+  MoreHorizontal
+} from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import StatusBadge from "@/components/ui/StatusBadge";
+import Spinner from "@/components/ui/Spinner";
+import EmployeeModal from "@/components/staff/EmployeeModal";
 
-const TABS = [
-  { id: 'Overview', label: 'Overview' },
-  { id: 'Attendance', label: 'Attendance' },
-  { id: 'Leave', label: 'Leave' },
-  { id: 'Payroll', label: 'Payroll' },
-  { id: 'Performance', label: 'Performance' },
-  { id: 'Training', label: 'Training' },
-  { id: 'Documents', label: 'Documents' },
-  { id: 'Salary History', label: 'Salary History' },
-  { id: 'History', label: 'History' },
-]
+// Subcomponents for tabs
+import { OverviewTab } from "@/components/staff/profile/OverviewTab";
+import { PersonalTab } from "@/components/staff/profile/PersonalTab";
+import { EmploymentOrgTab } from "@/components/staff/profile/EmploymentOrgTab";
+import { TimelineTab } from "@/components/staff/profile/TimelineTab";
+import { DocumentCenterTab } from "@/components/staff/profile/DocumentCenterTab";
+import { LeaveWorkspaceTab } from "@/components/staff/profile/LeaveWorkspaceTab";
+import { AttendanceWorkspaceTab } from "@/components/staff/profile/AttendanceWorkspaceTab";
+import { PayrollWorkspaceTab } from "@/components/staff/profile/PayrollWorkspaceTab";
+import { PerformanceWorkspaceTab } from "@/components/staff/profile/PerformanceWorkspaceTab";
+import { TrainingSkillsTab } from "@/components/staff/profile/TrainingSkillsTab";
+import { AssetManagementTab } from "@/components/staff/profile/AssetManagementTab";
+import { AuditLogTab } from "@/components/staff/profile/AuditLogTab";
 
-// Map a performance rating (numeric or label) to a StatusBadge-compatible status
-function ratingToStatus(rating) {
-  if (rating == null) return 'gray'
-  const r = String(rating).toLowerCase()
-  if (['5', 'excellent', 'outstanding', 'exceeds', 'a+', 'a'].includes(r)) return 'green'
-  if (['4', 'good', 'above average', 'meets+', 'b'].includes(r)) return 'blue'
-  if (['3', 'average', 'meets', 'satisfactory', 'c'].includes(r)) return 'yellow'
-  if (['2', 'below average', 'needs improvement', 'd'].includes(r)) return 'purple'
-  if (['1', 'poor', 'unsatisfactory', 'f'].includes(r)) return 'red'
-  return 'gray'
-}
+const PROFILE_TABS = [
+  { id: "overview", label: "360° Overview", icon: User },
+  { id: "personal", label: "Personal & Family", icon: Users },
+  { id: "employment", label: "Employment & Org", icon: Building2 },
+  { id: "timeline", label: "Timeline & Activity", icon: History },
+  { id: "documents", label: "Document Center", icon: FileText },
+  { id: "leave", label: "Leave Workspace", icon: Palmtree },
+  { id: "attendance", label: "Attendance Log", icon: Clock },
+  { id: "payroll", label: "Payroll History", icon: DollarSign },
+  { id: "performance", label: "Performance", icon: TrendingUp },
+  { id: "training", label: "Training & Skills", icon: GraduationCap },
+  { id: "assets", label: "Assigned Assets", icon: Laptop },
+  { id: "audit", label: "Audit Log", icon: ShieldAlert },
+];
 
 export default function EmployeeProfile() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [employee, setEmployee] = useState(null)
-  const [attendance, setAttendance] = useState([])
-  const [leaveRequests, setLeaveRequests] = useState([])
-  const [contracts, setContracts] = useState([])
-  const [assets, setAssets] = useState([])
-  const [performanceReviews, setPerformanceReviews] = useState([])
-  const [trainingRecords, setTrainingRecords] = useState([])
-  const [documents, setDocuments] = useState([])
-  const [salaryHistory, setSalaryHistory] = useState([])
-  const [activeTab, setActiveTab] = useState('Overview')
-  const [loading, setLoading] = useState(true)
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const empId = searchParams.get("id") || "emp_1";
+
+  const [employee, setEmployee] = useState(null);
+  const [allEmployees, setAllEmployees] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [payrollRecords, setPayrollRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Edit Modal State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // Collections
+  const [documents, setDocuments] = useState([
+    { id: "doc_1", name: "Employment Contract 2024.pdf", category: "Contract", date: "2024-01-15", size: "2.4 MB", status: "Signed" },
+    { id: "doc_2", name: "Non-Disclosure Agreement (NDA).pdf", category: "Legal", date: "2024-01-15", size: "1.1 MB", status: "Signed" },
+    { id: "doc_3", name: "W-4 Tax Withholding Form.pdf", category: "Tax", date: "2024-01-20", size: "850 KB", status: "Verified" },
+    { id: "doc_4", name: "Emergency Contact Consent.pdf", category: "HR", date: "2024-02-01", size: "520 KB", status: "Signed" },
+  ]);
+
+  const [assets, setAssets] = useState([
+    { id: "ast_1", name: 'MacBook Pro 16" M3 Max', serial: "C02G401XMD6R", category: "Hardware", status: "Active", assignedDate: "2024-01-15" },
+    { id: "ast_2", name: 'Dell UltraSharp 32" 4K Monitor', serial: "CN-093412-881", category: "Hardware", status: "Active", assignedDate: "2024-01-16" },
+    { id: "ast_3", name: "YubiKey 5C NFC Security Key", serial: "YK-9940123", category: "Security", status: "Active", assignedDate: "2024-01-15" },
+    { id: "ast_4", name: "Figma Enterprise License", serial: "FIG-ENT-8841", category: "Software", status: "Active", assignedDate: "2024-01-20" },
+  ]);
+
+  const [trainingRecords] = useState([
+    { id: "trn_1", course: "Annual Information Security & Compliance 2026", progress: 100, status: "Completed", completedDate: "2026-02-10" },
+    { id: "trn_2", course: "Inclusive Leadership & Workplace Dynamics", progress: 100, status: "Completed", completedDate: "2025-09-15" },
+    { id: "trn_3", course: "Advanced Data Analytics with Python & SQL", progress: 65, status: "In Progress", dueDate: "2026-08-30" },
+  ]);
+
+  const [timeline] = useState([
+    { id: "t1", event: "Annual Salary Review Approved", date: "2026-01-15", type: "compensation", details: "Base salary adjusted by +8.5% for high performance." },
+    { id: "t2", event: "Q4 Performance Review Completed", date: "2025-12-20", type: "performance", details: "Rating: 4.8 / 5.0 (Exceeds Expectations)." },
+    { id: "t3", event: "Promoted to Senior Position", date: "2024-07-01", type: "career", details: "Transitioned role level and expanded team responsibilities." },
+    { id: "t4", event: "Completed Information Security Certification", date: "2024-02-10", type: "training", details: "Scored 98% on compliance examination." },
+    { id: "t5", event: "Joined STAFFROOM Enterprise Roster", date: "2021-03-15", type: "onboarding", details: "Official start date." },
+  ]);
+
+  const loadEmployeeWorkspace = async () => {
+    setLoading(true);
+    try {
+      const emps = await base44.entities.Employee.list();
+      setAllEmployees(emps || []);
+      const emp = emps.find((e) => e.id === empId) || emps[0];
+      setEmployee(emp);
+
+      if (emp) {
+        const [atts, leaves, pays] = await Promise.all([
+          base44.entities.AttendanceRecord.filter({ employee_id: emp.id }),
+          base44.entities.LeaveRequest.filter({ employee_id: emp.id }),
+          base44.entities.PayrollRecord.filter({ employee_id: emp.id }),
+        ]);
+        setAttendance(atts || []);
+        setLeaveRequests(leaves || []);
+        setPayrollRecords(pays || []);
+      }
+    } catch (err) {
+      console.error("Error loading employee profile workspace:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (id) fetchEmployee()
-  }, [id])
+    loadEmployeeWorkspace();
+  }, [empId]);
 
-  async function fetchEmployee() {
-    setLoading(true)
+  const handleUpdateEmployee = async (updatedData) => {
+    try {
+      await base44.entities.Employee.update(employee.id, updatedData);
+      setEmployee((prev) => ({ ...prev, ...updatedData }));
+      setEditModalOpen(false);
+    } catch (err) {
+      alert("Failed to update employee profile.");
+    }
+  };
 
-    // Core queries — these tables are expected to exist. Use Promise.all so
-    // the profile fails loudly if the employee record itself is missing.
-    const [empRes, attRes, leaveRes, contractRes, assetRes] = await Promise.all([
-      supabase.from('employees')
-        .select('*, department:departments(id, name), position:positions(id, title)')
-        .eq('id', id)
-        .single(),
-      supabase.from('attendance')
-        .select('*')
-        .eq('employee_id', id)
-        .order('date', { ascending: false })
-        .limit(30),
-      supabase.from('leave_requests')
-        .select('*')
-        .eq('employee_id', id)
-        .order('created_at', { ascending: false }),
-      supabase.from('contracts')
-        .select('*')
-        .eq('employee_id', id)
-        .order('start_date', { ascending: false }),
-      supabase.from('assets')
-        .select('*')
-        .eq('assigned_to', id)
-    ])
+  const handleUploadDocument = () => {
+    const docName = prompt("Enter document name (e.g. Updated Tax Clearance.pdf):");
+    if (!docName) return;
+    const newDoc = {
+      id: `doc_${Date.now()}`,
+      name: docName,
+      category: "Upload",
+      date: new Date().toISOString().split("T")[0],
+      size: "1.2 MB",
+      status: "Verified",
+    };
+    setDocuments((prev) => [newDoc, ...prev]);
+  };
 
-    setEmployee(empRes.data)
-    setAttendance(attRes.data || [])
-    setLeaveRequests(leaveRes.data || [])
-    setContracts(contractRes.data || [])
-    setAssets(assetRes.data || [])
-
-    // Enterprise tab queries — these tables may not exist yet in every
-    // project, so use Promise.allSettled to avoid breaking the page when
-    // a table is missing or errors out.
-    const enterpriseQueries = [
-      supabase.from('performance_reviews')
-        .select('id, review_period, rating, goals, comments, reviewer_id, created_at')
-        .eq('employee_id', id)
-        .order('created_at', { ascending: false }),
-      supabase.from('training_records')
-        .select('id, course_name, status, completion_date, certificate_expiry')
-        .eq('employee_id', id)
-        .order('completion_date', { ascending: false }),
-      supabase.from('employee_documents')
-        .select('*')
-        .eq('employee_id', id)
-        .order('created_at', { ascending: false }),
-      supabase.from('salary_history')
-        .select('id, old_salary, new_salary, change_date, reason')
-        .eq('employee_id', id)
-        .order('change_date', { ascending: false }),
-    ]
-
-    const [perfRes, trainRes, docRes, salaryRes] = await Promise.allSettled(enterpriseQueries)
-
-    setPerformanceReviews(perfRes.status === 'fulfilled' ? (perfRes.value.data || []) : [])
-    setTrainingRecords(trainRes.status === 'fulfilled' ? (trainRes.value.data || []) : [])
-    setDocuments(docRes.status === 'fulfilled' ? (docRes.value.data || []) : [])
-    setSalaryHistory(salaryRes.status === 'fulfilled' ? (salaryRes.value.data || []) : [])
-
-    setLoading(false)
-  }
+  const handleAssignAsset = () => {
+    const assetName = prompt("Enter asset name (e.g. iPad Pro 12.9):");
+    if (!assetName) return;
+    const newAsset = {
+      id: `ast_${Date.now()}`,
+      name: assetName,
+      serial: `SN-${Math.floor(100000 + Math.random() * 900000)}`,
+      category: "Hardware",
+      status: "Active",
+      assignedDate: new Date().toISOString().split("T")[0],
+    };
+    setAssets((prev) => [newAsset, ...prev]);
+  };
 
   if (loading) {
-    return <Spinner size="lg" className="h-64" />
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Spinner size="lg" />
+        <p className="text-xs text-slate-400 font-medium">Loading 360° employee workspace...</p>
+      </div>
+    );
   }
 
   if (!employee) {
     return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Employee not found"
-        description="The employee you're looking for doesn't exist or has been removed."
-        action={
-          <button
-            onClick={() => navigate('/employees')}
-            className="text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-medium text-sm"
-          >
-            Back to Employees
-          </button>
-        }
-      />
-    )
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center max-w-md mx-auto my-12 border border-slate-100 dark:border-slate-800">
+        <User className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Employee Record Not Found</h3>
+        <p className="text-xs text-slate-500 mt-1">The requested profile record could not be loaded.</p>
+        <Link
+          to={createPageUrl("Staff")}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Staff Directory
+        </Link>
+      </div>
+    );
   }
 
-  const stats = [
-    { label: 'Attendance Rate', value: '95%', icon: CheckCircle, color: 'text-green-600 dark:text-green-400' },
-    { label: 'Leave Balance', value: '12 days', icon: Calendar, color: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Contract', value: contracts[0]?.status || 'Active', icon: FileText, color: 'text-purple-600 dark:text-purple-400' },
-    { label: 'Assets', value: assets.length, icon: Briefcase, color: 'text-amber-600 dark:text-amber-400' },
-  ]
+  const initials = employee.full_name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <PageHeader
-        title="Employee Profile"
-        description="View and manage employee details"
-        actions={
-          <>
-            <button className="btn-secondary">
-              <Edit2 size={16} className="mr-1" /> Edit
-            </button>
-            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-              <MoreVertical size={18} className="text-gray-600 dark:text-gray-400" />
-            </button>
-          </>
-        }
-      />
-
-      {/* Profile Card */}
-      <div className="card p-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Avatar */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <Avatar
-                name={employee.full_name}
-                size="xl"
-                className="!h-28 !w-28 !text-4xl !rounded-2xl"
-              />
-              <button className="absolute bottom-0 right-0 p-2 rounded-xl bg-white dark:bg-gray-700 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">
-                <Camera size={16} className="text-gray-600 dark:text-gray-300" />
-              </button>
-            </div>
-            <div className="text-center">
-              <StatusBadge status={employee.status} />
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="flex-1">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{employee.full_name}</h2>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">
-                  {employee.position?.title || 'No position'} • {employee.department?.name || 'No department'}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <InfoItem icon={Mail} label="Email" value={employee.email} />
-              <InfoItem icon={Phone} label="Phone" value={employee.phone || 'Not provided'} />
-              <InfoItem icon={Building2} label="Department" value={employee.department?.name || 'Not assigned'} />
-              <InfoItem icon={Briefcase} label="Position" value={employee.position?.title || 'Not assigned'} />
-              <InfoItem icon={Calendar} label="Hire Date" value={formatDate(employee.hire_date)} />
-              <InfoItem icon={DollarSign} label="Basic Salary" value={employee.basic_salary ? formatCurrency(employee.basic_salary) : 'Not set'} />
-              <InfoItem icon={MapPin} label="National ID" value={employee.national_id || 'Not provided'} />
-              <InfoItem icon={Users} label="Employee ID" value={employee.id.slice(0, 8).toUpperCase()} />
-            </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Top Navigation & Profile Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            to={createPageUrl("Staff")}
+            className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
+            title="Back to Staff Directory"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">Employee Workspace</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Comprehensive 360° talent record & workspace</p>
           </div>
         </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="card p-4 flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 ${color}`}>
-              <Icon size={18} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">{value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
-
-      <div className="card p-6">
-        {activeTab === 'Overview' && <OverviewTab employee={employee} contracts={contracts} assets={assets} />}
-        {activeTab === 'Attendance' && <AttendanceTab attendance={attendance} />}
-        {activeTab === 'Leave' && <LeaveTab leaveRequests={leaveRequests} />}
-        {activeTab === 'Payroll' && <PayrollTab employee={employee} />}
-        {activeTab === 'Performance' && <PerformanceTab reviews={performanceReviews} />}
-        {activeTab === 'Training' && <TrainingTab records={trainingRecords} />}
-        {activeTab === 'Documents' && <DocumentsTab documents={documents} />}
-        {activeTab === 'Salary History' && <SalaryHistoryTab history={salaryHistory} />}
-        {activeTab === 'History' && <HistoryTab contracts={contracts} leaveRequests={leaveRequests} />}
-      </div>
-    </div>
-  )
-}
-
-function InfoItem({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-start gap-2">
-      <Icon size={14} className="text-gray-400 dark:text-gray-500 mt-0.5" />
-      <div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{value}</p>
-      </div>
-    </div>
-  )
-}
-
-function OverviewTab({ employee, contracts, assets }) {
-  const currentContract = contracts[0]
-
-  return (
-    <div className="space-y-6">
-      {/* Contract Information */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide mb-3">Contract Information</h3>
-        {currentContract ? (
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Start Date</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatDate(currentContract.start_date)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">End Date</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatDate(currentContract.end_date) === '—' ? 'Ongoing' : formatDate(currentContract.end_date)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</p>
-                <StatusBadge status={currentContract.status} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Type</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{currentContract.type || 'Full-time'}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            icon={FileText}
-            title="No contracts found"
-            description="This employee doesn't have any contracts on record yet."
-          />
-        )}
-      </div>
-
-      {/* Assigned Assets */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide mb-3">Assigned Assets</h3>
-        {assets.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {assets.map(asset => (
-              <div key={asset.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center gap-3">
-                <Briefcase size={18} className="text-gray-400 dark:text-gray-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{asset.name || 'Asset'}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{asset.serial_number || 'No serial'}</p>
-                </div>
-              </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Switcher */}
+          <select
+            value={employee.id}
+            onChange={(e) => navigate(createPageUrl("EmployeeProfile", { id: e.target.value }))}
+            className="px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {allEmployees.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.full_name} ({e.job_title})
+              </option>
             ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={Briefcase}
-            title="No assets assigned"
-            description="There are no assets currently assigned to this employee."
-          />
-        )}
-      </div>
-    </div>
-  )
-}
+          </select>
 
-function AttendanceTab({ attendance }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Recent Attendance</h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{attendance.length} records</span>
-      </div>
-      {attendance.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Check In</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Check Out</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Method</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {attendance.slice(0, 10).map(att => (
-                <tr key={att.id}>
-                  <td className="py-2 px-3 text-sm text-gray-900 dark:text-gray-100">{formatDate(att.date)}</td>
-                  <td className="py-2 px-3 text-sm text-gray-900 dark:text-gray-100 font-mono">{att.check_in?.slice(0, 5) || '--:--'}</td>
-                  <td className="py-2 px-3 text-sm text-gray-900 dark:text-gray-100 font-mono">{att.check_out?.slice(0, 5) || '--:--'}</td>
-                  <td className="py-2 px-3 text-sm text-gray-600 dark:text-gray-400">{att.method || 'MANUAL'}</td>
-                  <td className="py-2 px-3">
-                    {att.check_out ? (
-                      <CheckCircle size={16} className="text-green-500 dark:text-green-400" />
-                    ) : (
-                      <Clock size={16} className="text-amber-500 dark:text-amber-400" />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <button
+            onClick={() => alert(`Direct message dispatched to ${employee.full_name}`)}
+            className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+            title="Send Message"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setEditModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm cursor-pointer"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit Profile</span>
+          </button>
         </div>
-      ) : (
-        <EmptyState
-          icon={Clock}
-          title="No attendance records"
-          description="This employee has no attendance history yet."
-        />
-      )}
-    </div>
-  )
-}
-
-function LeaveTab({ leaveRequests }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leave Requests</h3>
-        <button className="text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-medium">Request Leave</button>
       </div>
-      {leaveRequests.length > 0 ? (
-        <div className="space-y-2">
-          {leaveRequests.map(leave => (
-            <div key={leave.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{leave.leave_type}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(leave.start_date)} to {formatDate(leave.end_date)}</p>
-              </div>
-              <StatusBadge status={leave.status} />
+
+      {/* Header Banner Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="h-28 bg-gradient-to-r from-indigo-900 via-indigo-700 to-slate-900 relative" />
+
+        <div className="px-6 pb-6 pt-0 relative flex flex-col md:flex-row md:items-end justify-between gap-6 -mt-10">
+          <div className="flex flex-col md:flex-row md:items-end gap-5">
+            <div className="w-20 h-20 rounded-3xl bg-indigo-600 text-white font-black text-2xl flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-lg shrink-0">
+              {initials}
             </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={Calendar}
-          title="No leave requests"
-          description="This employee hasn't submitted any leave requests."
-        />
-      )}
-    </div>
-  )
-}
 
-function PayrollTab({ employee }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Salary Information</h3>
-      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Basic Salary</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">
-              {employee.basic_salary ? formatCurrency(employee.basic_salary) : 'Not set'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Pay Frequency</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Monthly</p>
-          </div>
-        </div>
-      </div>
-      <p className="text-sm text-gray-500 dark:text-gray-400">View and download payslips in the Payroll section.</p>
-    </div>
-  )
-}
-
-function PerformanceTab({ reviews }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Performance Reviews</h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{reviews.length} reviews</span>
-      </div>
-      {reviews.length > 0 ? (
-        <div className="relative space-y-4 pl-6">
-          {/* Timeline line */}
-          <div className="absolute left-2 top-2 bottom-2 w-px bg-gray-200 dark:bg-gray-700" />
-          {reviews.map((review) => (
-            <div key={review.id} className="relative">
-              {/* Timeline dot */}
-              <div className="absolute -left-[18px] top-3 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 ring-4 ring-white dark:ring-gray-900">
-                <TrendingUp size={8} className="text-white" />
-              </div>
-              <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {review.review_period || 'Review'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDate(review.created_at)}
-                    </p>
-                  </div>
-                  <StatusBadge
-                    status={ratingToStatus(review.rating)}
-                    label={review.rating != null ? `Rating: ${review.rating}` : 'No rating'}
-                  />
-                </div>
-                {review.goals && (
-                  <div className="mb-2">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Goals</p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{review.goals}</p>
-                  </div>
-                )}
-                {review.comments && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Comments</p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{review.comments}</p>
-                  </div>
-                )}
-                {review.reviewer_id && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                    Reviewer: {review.reviewer_id.slice(0, 8).toUpperCase()}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={Award}
-          title="No performance reviews"
-          description="This employee has no performance reviews on record yet."
-        />
-      )}
-    </div>
-  )
-}
-
-function TrainingTab({ records }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Training Records</h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{records.length} courses</span>
-      </div>
-      {records.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {records.map((record) => (
-            <div
-              key={record.id}
-              className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex flex-col gap-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900/30">
-                    <GraduationCap size={18} className="text-brand-600 dark:text-brand-400" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {record.course_name || 'Training Course'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <StatusBadge status={record.status} />
-                {record.certificate_expiry && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    Expires {formatDate(record.certificate_expiry)}
-                  </span>
-                )}
-              </div>
-              {record.completion_date && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Completed on {formatDate(record.completion_date)}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={GraduationCap}
-          title="No training records"
-          description="This employee has no training or certification records yet."
-        />
-      )}
-    </div>
-  )
-}
-
-function DocumentsTab({ documents }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Documents</h3>
-        <button className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-medium">
-          <Upload size={14} /> Upload Document
-        </button>
-      </div>
-      {documents.length > 0 ? (
-        <DataTable
-          columns={[
-            { key: 'name', header: 'Name', render: (row) => (
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-gray-400 dark:text-gray-500" />
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {row.name || row.file_name || 'Document'}
+            <div className="space-y-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{employee.full_name}</h2>
+                <StatusBadge status={employee.status || "Active"} />
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  {employee.department}
                 </span>
+                <span className="text-xs font-mono text-slate-400">ID: {employee.id}</span>
               </div>
-            )},
-            { key: 'type', header: 'Type', render: (row) => (
-              <span className="text-sm text-gray-600 dark:text-gray-400">{row.type || row.document_type || '—'}</span>
-            )},
-            { key: 'created_at', header: 'Uploaded', render: (row) => (
-              <span className="text-sm text-gray-600 dark:text-gray-400">{formatDate(row.created_at || row.uploaded_at)}</span>
-            )},
-            { key: 'status', header: 'Status', render: (row) => (
-              <StatusBadge status={row.status || 'ACTIVE'} />
-            )},
-          ]}
-          data={documents}
-          emptyTitle="No documents uploaded"
-          emptyDescription="There are no documents associated with this employee yet."
-          emptyIcon={FileText}
-        />
-      ) : (
-        <EmptyState
-          icon={FileText}
-          title="No documents uploaded"
-          description="There are no documents associated with this employee yet."
-          action={
-            <button className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-medium">
-              <Upload size={14} /> Upload Document
-            </button>
-          }
-        />
-      )}
-    </div>
-  )
-}
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                {employee.job_title} • {employee.employment_type || "Full-Time"}
+              </p>
+              <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500 pt-1 flex-wrap">
+                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-indigo-500" /> {employee.email}</span>
+                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-indigo-500" /> {employee.phone || "+1 (555) 019-2834"}</span>
+                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-indigo-500" /> {employee.location || "HQ - Austin, TX"}</span>
+              </div>
+            </div>
+          </div>
 
-function SalaryHistoryTab({ history }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Salary History</h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{history.length} changes</span>
-      </div>
-      {history.length > 0 ? (
-        <div className="relative space-y-4 pl-6">
-          {/* Timeline line */}
-          <div className="absolute left-2 top-2 bottom-2 w-px bg-gray-200 dark:bg-gray-700" />
-          {history.map((entry) => {
-            const diff = (entry.new_salary != null && entry.old_salary != null)
-              ? entry.new_salary - entry.old_salary
-              : null
-            const isIncrease = diff != null && diff >= 0
-            return (
-              <div key={entry.id} className="relative">
-                {/* Timeline dot */}
-                <div className={`absolute -left-[18px] top-3 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-gray-900 ${
-                  isIncrease ? 'bg-green-500' : 'bg-amber-500'
-                }`}>
-                  <ArrowUpRight size={8} className={`text-white ${isIncrease ? '' : 'rotate-90'}`} />
-                </div>
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {formatDate(entry.change_date)}
-                      </p>
-                      {entry.reason && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{entry.reason}</p>
-                      )}
-                    </div>
-                    {diff != null && (
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-                        isIncrease
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      }`}>
-                        <ArrowUpRight size={12} className={isIncrease ? '' : 'rotate-90'} />
-                        {isIncrease ? '+' : ''}{formatCurrency(Math.abs(diff))}
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Previous Salary</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {entry.old_salary != null ? formatCurrency(entry.old_salary) : '—'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">New Salary</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        {entry.new_salary != null ? formatCurrency(entry.new_salary) : '—'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {/* Profile Completion Indicator */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 shrink-0 w-full md:w-56 space-y-1.5">
+            <div className="flex justify-between items-center text-xs font-bold">
+              <span className="text-slate-500">Profile Completion</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">95%</span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+              <div className="bg-indigo-600 h-full rounded-full" style={{ width: "95%" }} />
+            </div>
+            <p className="text-[10px] text-slate-400">1 missing document (Medical Waiver)</p>
+          </div>
         </div>
-      ) : (
-        <EmptyState
-          icon={DollarSign}
-          title="No salary history"
-          description="There is no salary change history recorded for this employee."
+      </div>
+
+      {/* Tabs Bar */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar border-b border-slate-200 dark:border-slate-800">
+        {PROFILE_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                isActive
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content Display */}
+      <div>
+        {activeTab === "overview" && (
+          <OverviewTab
+            employee={employee}
+            leaveRequests={leaveRequests}
+            assets={assets}
+            documents={documents}
+            payrollRecords={payrollRecords}
+            attendance={attendance}
+            timeline={timeline}
+          />
+        )}
+        {activeTab === "personal" && <PersonalTab employee={employee} />}
+        {activeTab === "employment" && <EmploymentOrgTab employee={employee} allEmployees={allEmployees} />}
+        {activeTab === "timeline" && <TimelineTab timeline={timeline} />}
+        {activeTab === "documents" && <DocumentCenterTab documents={documents} onUploadDocument={handleUploadDocument} />}
+        {activeTab === "leave" && <LeaveWorkspaceTab leaveRequests={leaveRequests} />}
+        {activeTab === "attendance" && <AttendanceWorkspaceTab attendance={attendance} />}
+        {activeTab === "payroll" && <PayrollWorkspaceTab employee={employee} payrollRecords={payrollRecords} />}
+        {activeTab === "performance" && <PerformanceWorkspaceTab />}
+        {activeTab === "training" && <TrainingSkillsTab trainingRecords={trainingRecords} />}
+        {activeTab === "assets" && <AssetManagementTab assets={assets} onAssignAsset={handleAssignAsset} />}
+        {activeTab === "audit" && <AuditLogTab />}
+      </div>
+
+      {/* Edit Employee Modal */}
+      {editModalOpen && (
+        <EmployeeModal
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onSave={handleUpdateEmployee}
+          employee={employee}
         />
       )}
     </div>
-  )
-}
-
-function HistoryTab({ contracts, leaveRequests }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Contract History</h3>
-        {contracts.length > 0 ? (
-          <div className="space-y-2">
-            {contracts.map((contract, i) => (
-              <div key={contract.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-xs font-bold">
-                  {i + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{contract.type || 'Contract'}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {formatDate(contract.start_date)} - {formatDate(contract.end_date) === '—' ? 'Ongoing' : formatDate(contract.end_date)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={FileText}
-            title="No contract history"
-            description="This employee has no contract history on record."
-          />
-        )}
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Recent Leave Activity</h3>
-        {leaveRequests.length > 0 ? (
-          <div className="space-y-2">
-            {leaveRequests.slice(0, 5).map(leave => (
-              <div key={leave.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                <Calendar size={16} className="text-gray-400 dark:text-gray-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{leave.leave_type}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(leave.start_date)} to {formatDate(leave.end_date)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={Calendar}
-            title="No leave history"
-            description="This employee has no leave activity to display."
-          />
-        )}
-      </div>
-    </div>
-  )
+  );
 }
