@@ -10,8 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus, Search, FilePen, Send, CheckCircle2, Clock, XCircle,
-  Trash2, Eye, Upload, FileText, AlertCircle
+  Trash2, Eye, Upload, FileText, AlertCircle, RefreshCw
 } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonTable } from "@/components/ui/SkeletonLoaders";
 import { format } from "date-fns";
 
 const DOC_TYPES = ["Employment Contract", "NDA", "Policy Acknowledgement", "Offer Letter", "Termination Letter", "Promotion Letter", "Other"];
@@ -301,7 +304,10 @@ function SignerActionsModal({ open, onClose, request, onUpdate }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+import { useToast } from "@/contexts/ToastContext";
+
 export default function Signatures() {
+  const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -339,18 +345,14 @@ export default function Signatures() {
         sent_by: user.email,
         sent_at: data.signers?.length > 0 ? new Date().toISOString() : undefined,
       });
+      toast.success("Signature request created.");
       setCreateOpen(false); load();
     } catch {
-      alert("Failed to create signature request. Please try again.");
+      toast.error("Failed to create signature request. Please try again.");
     }
   };
 
   const handleEdit = async (data) => {
-    // Editing is only offered for Draft requests. If signers are present after
-    // the edit, this should leave Draft the same way creating-with-signers does
-    // — otherwise a request can sit permanently mislabeled as "Draft" (missing
-    // from the Active/Awaiting Signature filters and stats) even though it has
-    // signers who can already act on it via the detail view.
     const wasDraft = selected?.status === "Draft";
     const nowHasSigners = data.signers?.length > 0;
     const payload = { ...data };
@@ -362,29 +364,52 @@ export default function Signatures() {
         payload.sent_at = new Date().toISOString();
       }
       await base44.entities.SignatureRequest.update(selected.id, payload);
+      toast.success("Signature request updated.");
       setEditOpen(false); setSelected(null); load();
     } catch {
-      alert("Failed to save changes. Please try again.");
+      toast.error("Failed to save changes. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this signature request?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [confirmCancelReq, setConfirmCancelReq] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setActionLoading(true);
     try {
-      await base44.entities.SignatureRequest.delete(id);
+      await base44.entities.SignatureRequest.delete(confirmDeleteId);
+      toast.success("Signature request deleted successfully.");
+      setConfirmDeleteId(null);
       load();
     } catch {
-      alert("Failed to delete signature request. Please try again.");
+      toast.error("Failed to delete signature request. Please try again.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleCancel = async (req) => {
-    if (!confirm("Cancel this signature request?")) return;
+  const handleCancel = (req) => {
+    setConfirmCancelReq(req);
+  };
+
+  const executeCancel = async () => {
+    if (!confirmCancelReq) return;
+    setActionLoading(true);
     try {
-      await base44.entities.SignatureRequest.update(req.id, { status: "Cancelled" });
+      await base44.entities.SignatureRequest.update(confirmCancelReq.id, { status: "Cancelled" });
+      toast.success("Signature request cancelled.");
+      setConfirmCancelReq(null);
       load();
     } catch {
-      alert("Failed to cancel signature request. Please try again.");
+      toast.error("Failed to cancel signature request. Please try again.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -449,18 +474,32 @@ export default function Signatures() {
 
       {/* List */}
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-7 h-7 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" /></div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+          <SkeletonTable rows={5} />
+        </div>
       ) : loadError ? (
-        <div className="text-center py-24">
-          <p className="text-sm font-medium text-red-600">{loadError}</p>
-          <button onClick={load} className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors">
-            Retry
-          </button>
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl p-6 text-center space-y-3">
+          <p className="text-xs font-bold text-rose-700 dark:text-rose-300">{loadError}</p>
+          <Button onClick={load} variant="outline" size="sm" className="h-8 text-xs gap-1.5 cursor-pointer mx-auto">
+            <RefreshCw size={12} /> Retry Loading
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-24 text-gray-400">
-          <FilePen className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          <p className="font-medium">No signature requests found</p>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+          <EmptyState
+            icon={FilePen}
+            title="No Signature Requests Found"
+            description="No document signature requests match your current filters."
+            action={
+              <Button
+                onClick={() => { setSearch(""); setTabFilter("all"); }}
+                variant="outline"
+                className="text-xs cursor-pointer"
+              >
+                Reset Filters
+              </Button>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-3">
@@ -538,6 +577,28 @@ export default function Signatures() {
       <SignatureRequestModal open={createOpen} onClose={() => setCreateOpen(false)} onSave={handleCreate} employees={employees} request={null} />
       <SignatureRequestModal open={editOpen} onClose={() => { setEditOpen(false); setSelected(null); }} onSave={handleEdit} employees={employees} request={selected} />
       <SignerActionsModal open={detailOpen} onClose={() => { setDetailOpen(false); setSelected(null); }} request={selected} onUpdate={() => { load(); }} />
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Signature Request"
+        message="Are you sure you want to delete this signature request? This action cannot be undone."
+        confirmLabel="Delete Request"
+        danger={true}
+        loading={actionLoading}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmCancelReq)}
+        onClose={() => setConfirmCancelReq(null)}
+        onConfirm={executeCancel}
+        title="Cancel Signature Request"
+        message="Are you sure you want to cancel this signature request? Outstanding signers will no longer be able to sign."
+        confirmLabel="Cancel Request"
+        danger={true}
+        loading={actionLoading}
+      />
     </div>
   );
 }

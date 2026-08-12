@@ -16,6 +16,8 @@ import {
 } from '../hooks/useWebsite'
 import { websiteService } from '../services/website'
 import { formatDate, initials } from '../lib/format'
+import SEO from '../components/common/SEO'
+import { SEO_CONFIG } from '../config/seo.config'
 
 /* -------------------------------------------------------------------------- */
 /*  Icon mapping — DB stores icon names as strings                            */
@@ -626,26 +628,31 @@ export default function BlogPostPage() {
 
   useReveal()
 
-  // SEO: use post-specific meta if available, fall back to site SEO
-  useEffect(() => {
-    if (post?.title) document.title = post.title
-    if (post?.excerpt) {
-      let tag = document.querySelector('meta[name="description"]')
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute('name', 'description')
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', post.excerpt)
-    }
-  }, [post, seo])
-
   if (siteLoading || postLoading) return <PageSkeleton />
   if (siteError) return <PageError onRetry={refresh} />
   if (postError || !post) return <PageError onRetry={loadPost} />
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen bg-white">
+      <SEO
+        title={post?.title ? `${post.title} | STAFFROOM Blog` : SEO_CONFIG.pages.blog.title}
+        description={post?.excerpt || post?.summary || SEO_CONFIG.pages.blog.description}
+        canonical={`/blog/${post?.slug || slug}`}
+        ogType="article"
+        ogImage={post?.cover_image || post?.image}
+        article={{
+          title: post?.title,
+          description: post?.excerpt || post?.summary,
+          image: post?.cover_image || post?.image,
+          publishedTime: post?.published_at || post?.created_at,
+          author: post?.author_name || 'STAFFROOM Editorial Team',
+        }}
+        breadcrumbs={[
+          { name: 'Home', item: '/' },
+          { name: 'Blog', item: '/blog' },
+          { name: post?.title || 'Article', item: `/blog/${slug}` },
+        ]}
+      />
       <Navigation settings={settings} navHeader={navHeader} navAuth={navAuth} />
 
       <main>

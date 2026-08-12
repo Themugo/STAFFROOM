@@ -15,6 +15,8 @@ import {
   useLanding, useSettings, useNavigation, useFooter, useSEO,
 } from '../hooks/useWebsite'
 import { websiteService } from '../services/website'
+import SEO from '../components/common/SEO'
+import { SEO_CONFIG } from '../config/seo.config'
 
 /* -------------------------------------------------------------------------- */
 /*  Icon mapping — DB stores icon names as strings                            */
@@ -703,24 +705,17 @@ export default function ContactPage() {
 
   useReveal()
 
-  useEffect(() => {
-    if (seo?.metaTitle) document.title = seo.metaTitle
-    if (seo?.metaDescription) {
-      let tag = document.querySelector('meta[name="description"]')
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute('name', 'description')
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', seo.metaDescription)
-    }
-  }, [seo])
-
   if (loading) return <PageSkeleton />
   if (error) return <PageError onRetry={refresh} />
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen bg-white">
+      <SEO
+        title={seo?.metaTitle || SEO_CONFIG.pages.contact.title}
+        description={seo?.metaDescription || SEO_CONFIG.pages.contact.description}
+        canonical={SEO_CONFIG.pages.contact.canonical}
+        breadcrumbs={[{ name: 'Home', item: '/' }, { name: 'Contact Us', item: '/contact' }]}
+      />
       <Navigation settings={settings} navHeader={navHeader} navAuth={navAuth} />
 
       <main>

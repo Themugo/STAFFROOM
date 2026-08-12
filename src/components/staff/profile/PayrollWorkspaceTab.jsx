@@ -1,6 +1,8 @@
 import { DollarSign, Download, ShieldCheck, FileSpreadsheet, TrendingUp, CreditCard } from "lucide-react";
+import { useToast } from "@/contexts/ToastContext";
 
 export function PayrollWorkspaceTab({ employee, payrollRecords = [] }) {
+  const toast = useToast();
   const baseSalary = employee?.base_salary || 95000;
   const monthlyGross = Math.round(baseSalary / 12);
   const monthlyTax = Math.round(monthlyGross * 0.22);
@@ -8,7 +10,7 @@ export function PayrollWorkspaceTab({ employee, payrollRecords = [] }) {
   const monthlyNet = monthlyGross - monthlyTax - monthlyBenefits;
 
   const handleDownloadPayslip = (period) => {
-    alert(`Downloading Official Payslip for ${period}...`);
+    toast.info(`Downloading Official Payslip for ${period}...`);
   };
 
   return (

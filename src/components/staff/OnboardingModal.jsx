@@ -31,6 +31,7 @@ export default function OnboardingModal({ open, onClose, onSave, employee }) {
   const [form, setForm] = useState(EMPTY);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const isEdit = !!employee;
 
@@ -42,6 +43,7 @@ export default function OnboardingModal({ open, onClose, onSave, employee }) {
       setAiSuggestion("");
     }
     setStep(0);
+    setSubmitting(false);
   }, [employee, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -80,8 +82,14 @@ export default function OnboardingModal({ open, onClose, onSave, employee }) {
     }
   };
 
-  const handleSubmit = () => {
-    onSave({ ...form, base_salary: form.base_salary ? parseFloat(form.base_salary) : undefined });
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onSave({ ...form, base_salary: form.base_salary ? parseFloat(form.base_salary) : undefined });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const canProceed = () => {
@@ -252,8 +260,17 @@ export default function OnboardingModal({ open, onClose, onSave, employee }) {
               Next <ChevronRight className="w-4 h-4" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit} className="text-white gap-1.5" style={{ background: "#0F1B2D" }}>
-              <Check className="w-4 h-4" /> {isEdit ? "Save Changes" : "Add Employee"}
+            <Button onClick={handleSubmit} disabled={submitting} className="text-white gap-1.5" style={{ background: "#0F1B2D" }}>
+              {submitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" /> {isEdit ? "Save Changes" : "Add Employee"}
+                </>
+              )}
             </Button>
           )}
         </div>

@@ -4,14 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Search, Star, Sparkles, TrendingUp, Target } from "lucide-react";
+import { Plus, Search, Star, Sparkles, TrendingUp, Target, RefreshCw } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonCard } from "@/components/ui/SkeletonLoaders";
 import ReviewModal from "@/components/performance/ReviewModal";
 import ReviewCard from "@/components/performance/ReviewCard";
 import GoalsTab from "@/components/performance/GoalsTab";
 
 const PERIODS = ["All","Q1 2025","Q2 2025","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026"];
 
+import { useToast } from "@/contexts/ToastContext";
+
 export default function Performance() {
+  const toast = useToast();
   const [reviews, setReviews] = useState([]);
   const [goals, setGoals] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -44,21 +50,38 @@ export default function Performance() {
 
   const handleSave = async (data) => {
     try {
-      if (editing) await base44.entities.PerformanceReview.update(editing.id, data);
-      else await base44.entities.PerformanceReview.create(data);
+      if (editing) {
+        await base44.entities.PerformanceReview.update(editing.id, data);
+        toast.success("Performance review updated.");
+      } else {
+        await base44.entities.PerformanceReview.create(data);
+        toast.success("New performance review created.");
+      }
       setModalOpen(false); setEditing(null); load();
     } catch {
-      alert("Failed to save review. Please try again.");
+      toast.error("Failed to save review. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this review?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.PerformanceReview.delete(id);
+      await base44.entities.PerformanceReview.delete(confirmDeleteId);
+      toast.success("Review deleted successfully.");
+      setConfirmDeleteId(null);
       load();
     } catch {
-      alert("Failed to delete review. Please try again.");
+      toast.error("Failed to delete review. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -105,14 +128,32 @@ Focus on: top performers, underperforming areas, goal completion patterns, coach
   const avgGoals = reviews.length ? Math.round(reviews.reduce((s,r) => s + (r.goals_met||0), 0) / reviews.length) : 0;
   const completedGoals = goals.filter(g => g.status === "Completed").length;
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" /></div>;
+  if (loading) return (
+    <div className="max-w-7xl mx-auto space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    </div>
+  );
 
   if (loadError) return (
-    <div className="text-center py-20">
-      <p className="text-sm font-medium text-red-600">{loadError}</p>
-      <button onClick={load} className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors">
-        Retry
-      </button>
+    <div className="max-w-xl mx-auto my-12 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 p-8 rounded-3xl text-center space-y-4">
+      <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+        <Star size={24} />
+      </div>
+      <div>
+        <h3 className="text-base font-black text-slate-900 dark:text-white">Unable to Load Performance Reviews</h3>
+        <p className="text-xs text-slate-500 mt-1">{loadError}</p>
+      </div>
+      <Button
+        onClick={load}
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-colors cursor-pointer"
+      >
+        <RefreshCw size={14} />
+        <span>Retry Loading Performance Data</span>
+      </Button>
     </div>
   );
 
@@ -181,10 +222,21 @@ Focus on: top performers, underperforming areas, goal completion patterns, coach
           </div>
 
           {filtered.length === 0 ? (
-            <div className="text-center py-24 text-gray-400">
-              <Star className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p className="font-medium">No reviews found</p>
-              <p className="text-sm mt-1">Create your first performance review to get started.</p>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+              <EmptyState
+                icon={Star}
+                title="No Performance Reviews Found"
+                description="No evaluation records match your current search and period filters."
+                action={
+                  <Button
+                    onClick={() => { setSearch(""); setPeriodFilter("All"); }}
+                    variant="outline"
+                    className="text-xs cursor-pointer"
+                  >
+                    Reset Filters
+                  </Button>
+                }
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -204,6 +256,17 @@ Focus on: top performers, underperforming areas, goal completion patterns, coach
 
       <ReviewModal open={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }}
         onSave={handleSave} employees={employees} review={editing} />
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Performance Review"
+        message="Are you sure you want to delete this performance review? This action cannot be undone."
+        confirmLabel="Delete Review"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

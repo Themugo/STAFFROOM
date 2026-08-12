@@ -1,312 +1,480 @@
-import { useEffect, useState } from 'react'
-import { Plus, Edit2, Trash2, Users, Building2, UserCheck } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import {
+  Building2, Users, CheckSquare, Briefcase, Calendar, BookOpen,
+  Target, BarChart3, MessageSquare, ShieldCheck, Bot, Network, Plus,
+  Search, Filter, Clock, FileText, CheckCircle2, ChevronRight,
+  DollarSign, Layers, Download, Settings, Send, HardDrive, GitFork,
+  Activity, Shield, RefreshCw
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { initials } from '../lib/format'
-import {
-  PageHeader,
-  StatCard,
-  SearchInput,
-  DataTable,
-  StatusBadge,
-  EmptyState,
-  Modal,
-  ConfirmDialog,
-} from '../components/ui'
+import { useDepartment } from '../contexts/DepartmentContext'
+import { useNotifications } from '../contexts/NotificationContext'
+import { PageHeader, Modal } from '../components/ui'
 
-const EMPTY = { name: '', description: '', manager_id: '', status: 'ACTIVE' }
+// Import Tab Components
+import DepartmentHierarchyHeader from '../components/department/DepartmentHierarchyHeader'
+import DepartmentDashboardTab from '../components/department/DepartmentDashboardTab'
+import DepartmentPeopleTab from '../components/department/DepartmentPeopleTab'
+import DepartmentOperationsTab from '../components/department/DepartmentOperationsTab'
+import DepartmentWorkflowTab from '../components/department/DepartmentWorkflowTab'
+import DepartmentRosterTab from '../components/department/DepartmentRosterTab'
+import DepartmentBudgetTab from '../components/department/DepartmentBudgetTab'
+import DepartmentReportsTab from '../components/department/DepartmentReportsTab'
+import DepartmentDocumentsTab from '../components/department/DepartmentDocumentsTab'
+import DepartmentKpisTab from '../components/department/DepartmentKpisTab'
+import DepartmentSettingsTab from '../components/department/DepartmentSettingsTab'
+
+// Initial Data Generators
+const INITIAL_TASKS = [
+  { id: 't-1', title: 'Q3 Staffing Strategy Review', deptId: 'dept_hr', status: 'IN_PROGRESS', priority: 'HIGH', assignee: 'Sarah Jenkins', dueDate: '2026-08-15', category: 'Strategy' },
+  { id: 't-2', title: 'Migrate Auth Service to OAuth2', deptId: 'dept_eng', status: 'IN_PROGRESS', priority: 'CRITICAL', assignee: 'David Miller', dueDate: '2026-08-12', category: 'DevOps' },
+  { id: 't-3', title: 'Prepare FY27 Operating Budget Draft', deptId: 'dept_fin', status: 'TODO', priority: 'HIGH', assignee: 'Michael Chen', dueDate: '2026-08-20', category: 'Finance' },
+  { id: 't-4', title: 'Enterprise Sales Pitch Deck v4', deptId: 'dept_sales', status: 'COMPLETED', priority: 'MEDIUM', assignee: 'Rachel Green', dueDate: '2026-07-30', category: 'Marketing' },
+  { id: 't-5', title: 'HQ Facility Safety Audit', deptId: 'dept_ops', status: 'IN_PROGRESS', priority: 'MEDIUM', assignee: 'James Wilson', dueDate: '2026-08-18', category: 'Safety' },
+]
+
+const INITIAL_PROJECTS = [
+  { id: 'p-1', name: 'StaffRoom Phase 8 OS Deployment', deptId: 'dept_eng', status: 'On Track', health: 'HEALTHY', budget: 45000, spent: 32000, lead: 'David Miller', deadline: '2026-08-20', completion: 82 },
+  { id: 'p-2', name: 'Global Talent Onboarding Overhaul', deptId: 'dept_hr', status: 'On Track', health: 'HEALTHY', budget: 25000, spent: 18500, lead: 'Sarah Jenkins', deadline: '2026-09-01', completion: 65 },
+  { id: 'p-3', name: 'Automated Tax Compliance Module', deptId: 'dept_fin', status: 'At Risk', health: 'WARNING', budget: 60000, spent: 54000, lead: 'Michael Chen', deadline: '2026-08-25', completion: 45 },
+]
+
+const INITIAL_APPROVALS = [
+  { id: 'app-1', type: 'Leave Request', applicant: 'Alex Rivers', deptId: 'dept_eng', amountOrDays: '3 Days Paid Leave', date: '2026-08-01', status: 'PENDING' },
+  { id: 'app-2', type: 'Equipment Purchase', applicant: 'Emma Watson', deptId: 'dept_hr', amountOrDays: '$1,200 (MacBook Monitor)', date: '2026-08-02', status: 'PENDING' },
+  { id: 'app-3', type: 'Travel Expense Claim', applicant: 'Carlos Ruiz', deptId: 'dept_sales', amountOrDays: '$850 (Client Summit)', date: '2026-08-03', status: 'PENDING' },
+]
+
+const INITIAL_ANNOUNCEMENTS = [
+  { id: 'anc-1', title: 'Q3 All-Hands Department Strategy Meeting', deptId: 'dept_hr', date: '2026-08-01', author: 'Sarah Jenkins', pinned: true, content: 'Please review the updated department KPIs prior to Friday\'s review session.' },
+  { id: 'anc-2', title: 'Scheduled Infrastructure Maintenance Window', deptId: 'dept_eng', date: '2026-08-03', author: 'DevOps Lead', pinned: false, content: 'Production cluster upgrade scheduled for Sunday at 02:00 UTC.' }
+]
 
 export default function Departments() {
-  const [departments, setDepartments] = useState([])
-  const [employees, setEmployees] = useState([])
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState(null)
-  const [form, setForm] = useState(EMPTY)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
+  const {
+    departments,
+    activeDepartmentId,
+    setActiveDepartmentId,
+    userDepartment,
+    filterByDepartment,
+    isDepartmentScoped,
+    isElevatedRole
+  } = useDepartment()
 
-  useEffect(() => { load() }, [])
+  const notifications = useNotifications()
+  const showSuccess = notifications?.success || ((msg) => console.log(msg))
 
-  async function load() {
-    setLoading(true)
-    const [deptRes, empRes] = await Promise.all([
-      supabase.from('departments').select('*, manager:employees!departments_manager_id_fkey(full_name, email), employees(count)').order('name'),
-      supabase.from('employees').select('id, full_name, department_id').eq('status', 'ACTIVE').order('full_name'),
-    ])
-    setDepartments(deptRes.data ?? [])
-    setEmployees(empRes.data ?? [])
-    setLoading(false)
+  // Main Operating System Views
+  const [activeTab, setActiveTab] = useState('dashboard') // dashboard, people, operations, workflow, roster, budget, reports, documents, kpis, settings, ai
+  const [tasks, setTasks] = useState(INITIAL_TASKS)
+  const [projects, setProjects] = useState(INITIAL_PROJECTS)
+  const [approvals, setApprovals] = useState(INITIAL_APPROVALS)
+  const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS)
+
+  // AI Chat Assistant State
+  const [aiQuery, setAiQuery] = useState('')
+  const [aiChat, setAiChat] = useState([
+    { sender: 'bot', text: 'Hello! I am your Department AI Workspace Assistant. I have scoped access to your department\'s active projects, SOPs, tasks, rosters, and budgets. How can I assist your team today?' }
+  ])
+  const [aiLoading, setAiLoading] = useState(false)
+
+  // Modals & Forms State
+  const [modalType, setModalType] = useState(null) // 'task', 'announcement'
+  const [taskForm, setTaskForm] = useState({ title: '', priority: 'MEDIUM', dueDate: '', category: 'General' })
+  const [ancForm, setAncForm] = useState({ title: '', content: '' })
+
+  // Supabase departments sync
+  const [dbDepartments, setDbDepartments] = useState([])
+
+  useEffect(() => {
+    loadDbDepartments()
+  }, [])
+
+  async function loadDbDepartments() {
+    try {
+      const { data } = await supabase
+        .from('departments')
+        .select('*')
+        .order('name')
+      if (data) setDbDepartments(data)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
-  const filtered = departments.filter(d =>
-    d.name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.description?.toLowerCase().includes(search.toLowerCase())
-  )
+  // Currently Selected Department Object
+  const currentDeptObj = useMemo(() => {
+    return departments.find((d) => d.id === activeDepartmentId) || userDepartment || departments[0]
+  }, [departments, activeDepartmentId, userDepartment])
 
-  const totalEmployees = departments.reduce((sum, d) => sum + (d.employees?.[0]?.count || 0), 0)
+  const filteredTasks = useMemo(() => filterByDepartment(tasks), [tasks, activeDepartmentId])
+  const filteredProjects = useMemo(() => filterByDepartment(projects), [projects, activeDepartmentId])
+  const filteredApprovals = useMemo(() => filterByDepartment(approvals), [approvals, activeDepartmentId])
+  const filteredAnnouncements = useMemo(() => filterByDepartment(announcements), [announcements, activeDepartmentId])
 
-  function openAdd() { setForm(EMPTY); setError(''); setModal('add') }
-  function openEdit(dept) { setForm({ ...dept, manager_id: dept.manager_id ?? '' }); setError(''); setModal('edit') }
-  function closeModal() { setModal(null) }
-
-  async function handleSave() {
-    if (!form.name) { setError('Name is required.'); return }
-    setSaving(true); setError('')
-    const payload = { name: form.name, description: form.description, manager_id: form.manager_id || null, status: form.status }
-    const { error } = modal === 'add'
-      ? await supabase.from('departments').insert(payload)
-      : await supabase.from('departments').update(payload).eq('id', form.id)
-    setSaving(false)
-    if (error) { setError(error.message); return }
-    closeModal(); load()
+  // Handlers
+  const handleCreateTask = (e) => {
+    e.preventDefault()
+    if (!taskForm.title) return
+    const newTask = {
+      id: `t-${Date.now()}`,
+      title: taskForm.title,
+      deptId: activeDepartmentId === 'ALL' ? 'dept_eng' : activeDepartmentId,
+      status: 'TODO',
+      priority: taskForm.priority,
+      assignee: 'Current User',
+      dueDate: taskForm.dueDate || '2026-08-30',
+      category: taskForm.category
+    }
+    setTasks([newTask, ...tasks])
+    setTaskForm({ title: '', priority: 'MEDIUM', dueDate: '', category: 'General' })
+    setModalType(null)
+    showSuccess(`New task "${newTask.title}" added to ${currentDeptObj.name}!`)
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return
-    setDeleting(true)
-    await supabase.from('departments').delete().eq('id', deleteTarget.id)
-    setDeleting(false)
-    setDeleteTarget(null)
-    load()
+  const handleCreateAnnouncement = (e) => {
+    e.preventDefault()
+    if (!ancForm.title) return
+    const newAnc = {
+      id: `anc-${Date.now()}`,
+      title: ancForm.title,
+      content: ancForm.content,
+      deptId: activeDepartmentId === 'ALL' ? 'dept_eng' : activeDepartmentId,
+      date: new Date().toISOString().split('T')[0],
+      author: currentDeptObj.head || 'Department Manager',
+      pinned: false
+    }
+    setAnnouncements([newAnc, ...announcements])
+    setAncForm({ title: '', content: '' })
+    setModalType(null)
+    showSuccess(`Announcement posted to ${currentDeptObj.name}!`)
   }
 
-  const columns = [
-    {
-      key: 'name',
-      header: 'Department',
-      render: (dept) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white font-bold text-sm dark:from-purple-600 dark:to-purple-700">
-            {dept.name?.slice(0, 2).toUpperCase() || 'DP'}
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-white">{dept.name}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 max-w-xs">
-              {dept.description || 'No description provided'}
-            </p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      width: '120px',
-      render: (dept) => <StatusBadge status={dept.status} />,
-    },
-    {
-      key: 'employees',
-      header: 'Employees',
-      width: '120px',
-      render: (dept) => {
-        const count = dept.employees?.[0]?.count || 0
-        return (
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-              <Users size={14} />
-            </div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
-          </div>
-        )
-      },
-    },
-    {
-      key: 'manager',
-      header: 'Manager',
-      render: (dept) => (
-        dept.manager ? (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-medium dark:bg-amber-900/40 dark:text-amber-400">
-              {initials(dept.manager.full_name)}
-            </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[140px]">
-              {dept.manager.full_name}
-            </span>
-          </div>
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">No manager</span>
-        )
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      width: '100px',
-      render: (dept) => (
-        <div className="flex justify-end gap-1">
-          <button
-            onClick={() => openEdit(dept)}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 dark:hover:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition"
-            title="Edit"
-          >
-            <Edit2 size={15} />
-          </button>
-          <button
-            onClick={() => setDeleteTarget(dept)}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition"
-            title="Delete"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      ),
-    },
-  ]
+  const handleApproveRequest = (id, approved) => {
+    setApprovals(approvals.map((a) => a.id === id ? { ...a, status: approved ? 'APPROVED' : 'REJECTED' } : a))
+    showSuccess(`Approval request ${approved ? 'approved' : 'rejected'}.`)
+  }
+
+  const handleAiSend = (e) => {
+    e.preventDefault()
+    if (!aiQuery.trim()) return
+    const userMsg = aiQuery
+    setAiQuery('')
+    setAiChat((prev) => [...prev, { sender: 'user', text: userMsg }])
+    setAiLoading(true)
+
+    setTimeout(() => {
+      let botResponse = `Based on ${currentDeptObj.name} records: We have ${filteredTasks.length} active tasks, ${filteredProjects.length} key projects, and ${currentDeptObj.memberCount || 28} assigned members.`
+      if (userMsg.toLowerCase().includes('budget')) {
+        botResponse = `Department Budget Analysis for ${currentDeptObj.name}: Total allocated operating budget is $110,000, with 74% currently committed across SaaS, Hardware, and Training line items.`
+      } else if (userMsg.toLowerCase().includes('sop') || userMsg.toLowerCase().includes('policy')) {
+        botResponse = `Verified SOP Policy: According to ${currentDeptObj.name} Standard Operating Procedure (v2.4), all expense claims > $500 require Department Manager approval.`
+      } else if (userMsg.toLowerCase().includes('roster') || userMsg.toLowerCase().includes('shift')) {
+        botResponse = `${currentDeptObj.name} Duty Roster: Morning shift runs 08:00 - 16:30, Evening shift 14:00 - 22:30. Current shift fulfillment rate is 96.4%.`
+      }
+      setAiChat((prev) => [...prev, { sender: 'bot', text: botResponse }])
+      setAiLoading(false)
+    }, 800)
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
+      {/* Top Header */}
       <PageHeader
-        title="Departments"
-        description="Organize your company structure"
+        title={`${currentDeptObj.name} Department Operating System`}
+        description={`Secure operational workspace for ${currentDeptObj.name} — Manage people, tasks, workflows, rosters, budgets, documents, and KPIs.`}
         icon={Building2}
         actions={
-          <button onClick={openAdd} className="btn-primary">
-            <Plus size={18} className="mr-2" /> Add Department
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setModalType('task')}
+              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus size={14} /> New Task
+            </button>
+            <button
+              onClick={() => setActiveTab('ai')}
+              className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Bot size={14} /> AI Co-Pilot
+            </button>
+          </div>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          icon={Building2}
-          label="Departments"
-          value={departments.length}
-          color="purple"
-          loading={loading}
-        />
-        <StatCard
-          icon={Users}
-          label="Total Employees"
-          value={totalEmployees}
-          color="blue"
-          loading={loading}
-        />
-        <StatCard
-          icon={UserCheck}
-          label="With Managers"
-          value={departments.filter(d => d.manager_id).length}
-          color="green"
-          loading={loading}
-        />
+      {/* Hierarchy Flow Header Banner */}
+      <DepartmentHierarchyHeader currentDept={currentDeptObj} isElevatedRole={isElevatedRole} />
+
+      {/* Workspace Quick Switcher Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-100 dark:border-indigo-900">
+            <Building2 size={20} />
+          </div>
+          <div>
+            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Active Department Workspace</span>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                {currentDeptObj.name}
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                {currentDeptObj.code}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Workspace Quick Switch Buttons */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 text-xs">
+          <button
+            onClick={() => setActiveDepartmentId('ALL')}
+            className={`px-3 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer shrink-0 ${
+              activeDepartmentId === 'ALL'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            All Workspaces
+          </button>
+          {departments.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setActiveDepartmentId(d.id)}
+              className={`px-3 py-1.5 rounded-xl font-semibold transition-colors cursor-pointer shrink-0 ${
+                activeDepartmentId === d.id
+                  ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              {d.code}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Search */}
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder="Search departments..."
-        className="max-w-sm"
-      />
-
-      {/* Departments Table */}
-      <DataTable
-        columns={columns}
-        data={filtered}
-        loading={loading}
-        keyField="id"
-        emptyIcon={Building2}
-        emptyTitle="No departments found"
-        emptyDescription="Try adjusting your search or add a new department to get started."
-      />
-
-      {/* Add/Edit Modal */}
-      <Modal
-        open={modal !== null}
-        onClose={closeModal}
-        title={modal === 'add' ? 'Add Department' : 'Edit Department'}
-        size="md"
-        footer={
-          <>
-            <button onClick={closeModal} className="btn-secondary">Cancel</button>
-            <button onClick={handleSave} className="btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Department'}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="label">Name *</label>
-            <input
-              className="input"
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Engineering"
-            />
-          </div>
-          <div>
-            <label className="label">Description</label>
-            <textarea
-              className="input"
-              rows={3}
-              value={form.description ?? ''}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Brief description of the department..."
-            />
-          </div>
-          <div>
-            <label className="label">Manager</label>
-            <select
-              className="input"
-              value={form.manager_id ?? ''}
-              onChange={e => setForm(f => ({ ...f, manager_id: e.target.value }))}
+      {/* Main 10 Required Department OS Navigation Tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-semibold">
+        {[
+          { id: 'dashboard', label: 'Department Dashboard', icon: Building2 },
+          { id: 'people', label: 'People', icon: Users },
+          { id: 'operations', label: 'Operations', icon: HardDrive },
+          { id: 'workflow', label: 'Workflow', icon: GitFork },
+          { id: 'roster', label: 'Roster', icon: Calendar },
+          { id: 'budget', label: 'Budget', icon: DollarSign },
+          { id: 'reports', label: 'Reports', icon: FileText },
+          { id: 'documents', label: 'Documents', icon: BookOpen },
+          { id: 'kpis', label: 'KPIs', icon: Target },
+          { id: 'settings', label: 'Settings', icon: Settings },
+          { id: 'ai', label: 'AI Co-Pilot', icon: Bot },
+        ].map((tab) => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+              }`}
             >
-              <option value="">— Select Manager —</option>
-              {employees.map(e => (
-                <option key={e.id} value={e.id}>{e.full_name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Status</label>
-            <div className="flex gap-3">
-              {['ACTIVE', 'INACTIVE'].map(s => (
-                <label
-                  key={s}
-                  className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition ${
-                    form.status === s
-                      ? 'border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
-                      : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="status"
-                    value={s}
-                    checked={form.status === s}
-                    onChange={() => setForm(f => ({ ...f, status: s }))}
-                    className="sr-only"
-                  />
-                  <span className={`h-2 w-2 rounded-full ${s === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`} />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {s === 'ACTIVE' ? 'Active' : 'Inactive'}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
-              {error}
-            </div>
-          )}
-        </div>
-      </Modal>
+              <Icon size={15} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+      </div>
 
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title="Delete Department"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        danger
-        loading={deleting}
-      />
+      {/* TAB CONTENT SWITCHING */}
+      {activeTab === 'dashboard' && (
+        <DepartmentDashboardTab
+          currentDept={currentDeptObj}
+          tasks={filteredTasks}
+          projects={filteredProjects}
+          approvals={filteredApprovals}
+          announcements={filteredAnnouncements}
+          onOpenModal={setModalType}
+          onApproveRequest={handleApproveRequest}
+          onNavigateTab={setActiveTab}
+        />
+      )}
+
+      {activeTab === 'people' && (
+        <DepartmentPeopleTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'operations' && (
+        <DepartmentOperationsTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'workflow' && (
+        <DepartmentWorkflowTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'roster' && (
+        <DepartmentRosterTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'budget' && (
+        <DepartmentBudgetTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'reports' && (
+        <DepartmentReportsTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'documents' && (
+        <DepartmentDocumentsTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'kpis' && (
+        <DepartmentKpisTab currentDept={currentDeptObj} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'settings' && (
+        <DepartmentSettingsTab currentDept={currentDeptObj} isElevatedRole={isElevatedRole} showSuccess={showSuccess} />
+      )}
+
+      {activeTab === 'ai' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-indigo-600 text-white font-bold">
+                <Bot size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Department AI Co-Pilot ({currentDeptObj.name})</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Scoped strictly to {currentDeptObj.name} documents, SOPs, budgets, and project telemetry.</p>
+              </div>
+            </div>
+
+            <div className="h-80 overflow-y-auto p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+              {aiChat.map((msg, i) => (
+                <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-md p-3.5 rounded-2xl leading-relaxed ${
+                    msg.sender === 'user'
+                      ? 'bg-indigo-600 text-white rounded-br-none'
+                      : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-bl-none shadow-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {aiLoading && (
+                <div className="flex justify-start">
+                  <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 animate-pulse text-xs">
+                    Synthesizing response for {currentDeptObj.name}...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleAiSend} className="flex gap-2">
+              <input
+                type="text"
+                placeholder={`Ask AI about ${currentDeptObj.name} tasks, SOPs, rosters, or budget...`}
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                className="flex-1 px-4 py-2.5 text-xs rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button type="submit" className="btn-primary text-xs px-4 py-2.5 rounded-2xl flex items-center gap-1.5 cursor-pointer">
+                <Send size={14} /> Send
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Task Modal */}
+      {modalType === 'task' && (
+        <Modal
+          open={true}
+          onClose={() => setModalType(null)}
+          title={`New Task for ${currentDeptObj.name}`}
+          size="md"
+        >
+          <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
+            <div>
+              <label className="label">Task Title *</label>
+              <input
+                className="input"
+                value={taskForm.title}
+                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                placeholder="e.g. Complete Q3 Compliance Review"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Priority</label>
+                <select
+                  className="input"
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Due Date</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={taskForm.dueDate}
+                  onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setModalType(null)} className="btn-secondary">Cancel</button>
+              <button type="submit" className="btn-primary">Save Task</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Post Announcement Modal */}
+      {modalType === 'announcement' && (
+        <Modal
+          open={true}
+          onClose={() => setModalType(null)}
+          title={`Post Comms for ${currentDeptObj.name}`}
+          size="md"
+        >
+          <form onSubmit={handleCreateAnnouncement} className="space-y-4 text-xs">
+            <div>
+              <label className="label">Announcement Title *</label>
+              <input
+                className="input"
+                value={ancForm.title}
+                onChange={(e) => setAncForm({ ...ancForm, title: e.target.value })}
+                placeholder="e.g. Q3 All-Hands Review Session"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Content *</label>
+              <textarea
+                rows={4}
+                className="input"
+                value={ancForm.content}
+                onChange={(e) => setAncForm({ ...ancForm, content: e.target.value })}
+                placeholder="Write announcement details..."
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setModalType(null)} className="btn-secondary">Cancel</button>
+              <button type="submit" className="btn-primary">Post Announcement</button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

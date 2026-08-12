@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from "@/contexts/ToastContext";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell } from 'recharts';
 
 const PIPELINE_COLUMNS = [
@@ -277,6 +278,7 @@ const SOURCE_DATA = [
 ];
 
 export default function Recruitment() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [vacancies, setVacancies] = useState(DEMO_VACANCIES);
   const [applications, setApplications] = useState(DEMO_APPLICATIONS);
@@ -332,7 +334,7 @@ export default function Recruitment() {
     setApplications(prev => [newApp, ...prev]);
     setShowApplyModal(false);
     setApplyForm({ job_id: '', full_name: '', email: '', phone: '', linkedin: '', resume: '', experience: 3, cover_letter: '' });
-    alert('Thank you! Your application has been received and routed to HR for screening.');
+    toast.success('Thank you! Your application has been received and routed to HR for screening.');
   };
 
   const toggleSelectApp = (id) => {
@@ -544,7 +546,7 @@ export default function Recruitment() {
             </div>
             <Button
               className="bg-indigo-600 text-white text-xs gap-1.5 h-9"
-              onClick={() => alert('Opening new Job Requisition wizard...')}
+              onClick={() => toast.info('Opening new Job Requisition wizard...')}
             >
               <Plus size={14} /> Create Job Requisition
             </Button>

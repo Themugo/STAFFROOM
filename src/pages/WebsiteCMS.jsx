@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 
 import PageHeader from '../components/ui/PageHeader'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import Modal from '../components/ui/Modal'
 import StatCard from '../components/ui/StatCard'
 import Spinner from '../components/ui/Spinner'
@@ -226,7 +226,7 @@ export default function WebsiteCMS() {
       </div>
 
       <div className="mb-6">
-        <Tabs tabs={tabsWithCounts} active={activeTab} onChange={setActiveTab} />
+        <CustomTabs tabs={tabsWithCounts} active={activeTab} onChange={setActiveTab} />
       </div>
 
       {activeTab === 'hero' && <HeroTab onToast={success} onError={error} />}

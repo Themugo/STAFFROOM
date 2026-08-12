@@ -16,6 +16,8 @@ import {
 } from '../hooks/useWebsite'
 import { websiteService } from '../services/website'
 import { initials } from '../lib/format'
+import SEO from '../components/common/SEO'
+import { SEO_CONFIG } from '../config/seo.config'
 
 /* -------------------------------------------------------------------------- */
 /*  Icon mapping — DB stores icon names as strings                            */
@@ -616,24 +618,17 @@ export default function AboutPage() {
 
   useReveal()
 
-  useEffect(() => {
-    if (seo?.metaTitle) document.title = seo.metaTitle
-    if (seo?.metaDescription) {
-      let tag = document.querySelector('meta[name="description"]')
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute('name', 'description')
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', seo.metaDescription)
-    }
-  }, [seo])
-
   if (loading) return <PageSkeleton />
   if (error) return <PageError onRetry={refresh} />
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen bg-white">
+      <SEO
+        title={seo?.metaTitle || SEO_CONFIG.pages.about.title}
+        description={seo?.metaDescription || SEO_CONFIG.pages.about.description}
+        canonical={SEO_CONFIG.pages.about.canonical}
+        breadcrumbs={[{ name: 'Home', item: '/' }, { name: 'About Us', item: '/about' }]}
+      />
       <Navigation settings={settings} navHeader={navHeader} navAuth={navAuth} />
 
       <main>

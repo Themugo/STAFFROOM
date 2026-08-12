@@ -8,7 +8,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Heart, Pencil, Trash2, DollarSign, CheckCircle2, Users } from "lucide-react";
+import { Plus, Search, Heart, Pencil, Trash2, DollarSign, CheckCircle2, Users, RefreshCw } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonTable } from "@/components/ui/SkeletonLoaders";
 import { format } from "date-fns";
 
 const BENEFIT_TYPES = ["Health Insurance", "Dental", "Vision", "Life Insurance", "401k / Pension", "Gym Membership", "Remote Work Stipend", "Education Allowance", "Other"];
@@ -133,7 +136,10 @@ function BenefitModal({ open, onClose, onSave, employees, benefit, prefill }) {
   );
 }
 
+import { useToast } from "@/contexts/ToastContext";
+
 export default function Benefits() {
+  const toast = useToast();
   const [enrollments, setEnrollments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -171,21 +177,38 @@ export default function Benefits() {
 
   const handleSave = async (data) => {
     try {
-      if (editing) await base44.entities.BenefitEnrollment.update(editing.id, data);
-      else await base44.entities.BenefitEnrollment.create(data);
+      if (editing) {
+        await base44.entities.BenefitEnrollment.update(editing.id, data);
+        toast.success("Benefit enrollment updated.");
+      } else {
+        await base44.entities.BenefitEnrollment.create(data);
+        toast.success("Benefit enrollment saved.");
+      }
       setModalOpen(false); setEditing(null); setPrefill(null); load();
     } catch {
-      alert("Failed to save enrollment. Please try again.");
+      toast.error("Failed to save enrollment. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Remove this enrollment?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.BenefitEnrollment.delete(id);
+      await base44.entities.BenefitEnrollment.delete(confirmDeleteId);
+      toast.success("Enrollment removed successfully.");
+      setConfirmDeleteId(null);
       load();
     } catch {
-      alert("Failed to remove enrollment. Please try again.");
+      toast.error("Failed to remove enrollment. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -208,8 +231,11 @@ export default function Benefits() {
       </div>
 
       {loadError && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-700">
-          {loadError}
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <Button onClick={load} variant="outline" size="sm" className="h-8 text-xs gap-1 cursor-pointer">
+            <RefreshCw size={12} /> Retry
+          </Button>
         </div>
       )}
 
@@ -259,9 +285,26 @@ export default function Benefits() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-48"><div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-800 animate-spin" /></div>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+              <SkeletonTable rows={5} />
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-24 text-gray-400"><Heart className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-medium">No enrollments found</p></div>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+              <EmptyState
+                icon={Heart}
+                title="No Benefits Enrollments Found"
+                description="No active benefit enrollments match your current search or filter criteria."
+                action={
+                  <Button
+                    onClick={() => { setSearch(""); setTypeFilter("All"); setStatusFilter("All"); }}
+                    variant="outline"
+                    className="text-xs cursor-pointer"
+                  >
+                    Reset Filters
+                  </Button>
+                }
+              />
+            </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <table className="w-full">
@@ -390,6 +433,17 @@ export default function Benefits() {
 
       <BenefitModal open={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); setPrefill(null); }}
         onSave={handleSave} employees={employees} benefit={editing} prefill={prefill} />
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Remove Benefit Enrollment"
+        message="Are you sure you want to remove this benefit enrollment? This action cannot be undone."
+        confirmLabel="Remove Enrollment"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { usePermissions } from '../contexts/PermissionContext'
 import { useAuth } from '../contexts/AuthContext'
 import Spinner from './ui/Spinner'
+import { Error403 } from './ui/ErrorPages'
 
 // Backward-compatible permission map for old-style string permissions
 // Maps old permission strings to new module:feature:action tuples
@@ -27,8 +28,8 @@ export function hasPermission(role, permission) {
   // Legacy support: check if the old-style permission maps to any new permission
   const newPerms = LEGACY_PERMISSION_MAP[permission]
   if (!newPerms) return false
-  // This is a simplified check — the real check happens via usePermissions hook
-  return true
+  // Fail closed — standalone callers must use usePermissions() hook for active context checks
+  return false
 }
 
 export function hasModulePermission(module, feature, action = 'read') {
@@ -72,8 +73,9 @@ export default function RBACRoute({ permission, module, feature, action = 'read'
   }
 
   if (!allowed) {
-    return <Navigate to="/dashboard" replace />
+    return <Error403 moduleName={module || permission} />
   }
 
   return children
 }
+

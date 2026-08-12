@@ -101,35 +101,35 @@ export default function Modal({ open, onClose, title, description, size = 'md', 
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className="absolute inset-0 bg-[#0F172A]/40 backdrop-blur-xs animate-fade-in" onClick={onClose} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
-        className={`relative w-full ${SIZES[size]} max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl animate-scale-in outline-none dark:bg-gray-900 dark:border dark:border-gray-800`}
+        className={`relative w-full ${SIZES[size]} max-h-[90vh] overflow-hidden rounded-3xl bg-white border border-[#DCE6F2] shadow-2xl animate-scale-in outline-none`}
       >
         {(title || onClose) && (
-          <div className="flex items-start justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+          <div className="flex items-start justify-between border-b border-[#DCE6F2] px-6 py-4.5 bg-[#F6F9FD]">
             <div>
-              {title && <h3 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>}
-              {description && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>}
+              {title && <h3 id={titleId} className="text-lg font-black tracking-tight text-[#102A43]">{title}</h3>}
+              {description && <p className="mt-0.5 text-xs font-medium text-[#52677F]">{description}</p>}
             </div>
             {onClose && (
               <button
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                className="rounded-xl p-1.5 text-[#52677F] hover:bg-slate-200/60 hover:text-[#102A43] transition-colors cursor-pointer"
               >
-                <X size={20} aria-hidden="true" />
+                <X size={18} aria-hidden="true" />
               </button>
             )}
           </div>
         )}
-        <div className="max-h-[calc(90vh-8rem)] overflow-y-auto px-6 py-4">{children}</div>
+        <div className="max-h-[calc(90vh-8rem)] overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/50">
+          <div className="flex justify-end gap-3 border-t border-[#DCE6F2] bg-[#F6F9FD] px-6 py-4">
             {footer}
           </div>
         )}

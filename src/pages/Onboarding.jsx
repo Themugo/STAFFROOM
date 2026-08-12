@@ -12,6 +12,7 @@ import {
   HelpCircle, Calendar, CheckSquare, RefreshCw, AlertCircle, ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/contexts/ToastContext";
 
 const DEFAULT_TASKS = [
   { category: "IT Setup", label: "Create company email account" },
@@ -141,7 +142,7 @@ function NewChecklistModal({ open, onClose, onSave, employees }) {
       });
       setEmpId(""); setStartDate("");
     } catch {
-      alert("Checklist saved locally.");
+      toast.success("Checklist saved locally.");
     } finally {
       setGenerating(false);
     }
@@ -187,6 +188,7 @@ function NewChecklistModal({ open, onClose, onSave, employees }) {
 }
 
 export default function Onboarding() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState("onboarding");
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -236,7 +238,7 @@ export default function Onboarding() {
   const handleConfirmProbation = (id) => {
     setProbationList(prev => prev.map(p => p.id === id ? { ...p, status: 'CONFIRMED', status_badge: 'Confirmed' } : p));
     setSelectedProbationModal(null);
-    alert('Employee probation completed and full employment confirmed!');
+    toast.success('Employee probation completed and full employment confirmed!');
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;

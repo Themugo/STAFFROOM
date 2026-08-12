@@ -35,7 +35,8 @@ import {
   Send,
   KeyRound,
   UserCheck,
-  MoreHorizontal
+  MoreHorizontal,
+  Bus
 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -55,11 +56,13 @@ import { PerformanceWorkspaceTab } from "@/components/staff/profile/PerformanceW
 import { TrainingSkillsTab } from "@/components/staff/profile/TrainingSkillsTab";
 import { AssetManagementTab } from "@/components/staff/profile/AssetManagementTab";
 import { AuditLogTab } from "@/components/staff/profile/AuditLogTab";
+import { EmployeeTransportTab } from "@/components/staff/profile/EmployeeTransportTab";
 
 const PROFILE_TABS = [
   { id: "overview", label: "360° Overview", icon: User },
   { id: "personal", label: "Personal & Family", icon: Users },
   { id: "employment", label: "Employment & Org", icon: Building2 },
+  { id: "transport", label: "Transport Profile", icon: Bus },
   { id: "timeline", label: "Timeline & Activity", icon: History },
   { id: "documents", label: "Document Center", icon: FileText },
   { id: "leave", label: "Leave Workspace", icon: Palmtree },
@@ -71,7 +74,10 @@ const PROFILE_TABS = [
   { id: "audit", label: "Audit Log", icon: ShieldAlert },
 ];
 
+import { useToast } from "@/contexts/ToastContext";
+
 export default function EmployeeProfile() {
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const empId = searchParams.get("id") || "emp_1";
@@ -149,9 +155,10 @@ export default function EmployeeProfile() {
     try {
       await base44.entities.Employee.update(employee.id, updatedData);
       setEmployee((prev) => ({ ...prev, ...updatedData }));
+      toast.success("Employee profile updated.");
       setEditModalOpen(false);
     } catch (err) {
-      alert("Failed to update employee profile.");
+      toast.error("Failed to update employee profile.");
     }
   };
 
@@ -248,7 +255,7 @@ export default function EmployeeProfile() {
           </select>
 
           <button
-            onClick={() => alert(`Direct message dispatched to ${employee.full_name}`)}
+            onClick={() => toast.info(`Direct message dispatched to ${employee.full_name}`)}
             className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
             title="Send Message"
           >
@@ -266,51 +273,51 @@ export default function EmployeeProfile() {
       </div>
 
       {/* Header Banner Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="h-28 bg-gradient-to-r from-indigo-900 via-indigo-700 to-slate-900 relative" />
+      <div className="bg-white rounded-3xl border border-[#DCE6F2] shadow-2xs overflow-hidden">
+        <div className="h-28 bg-gradient-to-r from-[#102A43] via-[#1E3A8A] to-[#2563EB] relative" />
 
         <div className="px-6 pb-6 pt-0 relative flex flex-col md:flex-row md:items-end justify-between gap-6 -mt-10">
           <div className="flex flex-col md:flex-row md:items-end gap-5">
-            <div className="w-20 h-20 rounded-3xl bg-indigo-600 text-white font-black text-2xl flex items-center justify-center ring-4 ring-white dark:ring-slate-900 shadow-lg shrink-0">
+            <div className="w-20 h-20 rounded-3xl bg-[#2563EB] text-white font-black text-2xl flex items-center justify-center ring-4 ring-white shadow-md shrink-0">
               {initials}
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{employee.full_name}</h2>
+                <h2 className="text-2xl font-black text-[#102A43] tracking-tight">{employee.full_name}</h2>
                 <StatusBadge status={employee.status || "Active"} />
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#EAF3FF] text-[#2563EB] border border-[#2563EB]/20">
                   {employee.department}
                 </span>
-                <span className="text-xs font-mono text-slate-400">ID: {employee.id}</span>
+                <span className="text-xs font-mono text-[#52677F]">ID: {employee.id}</span>
               </div>
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <p className="text-xs font-semibold text-[#52677F]">
                 {employee.job_title} • {employee.employment_type || "Full-Time"}
               </p>
-              <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500 pt-1 flex-wrap">
-                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-indigo-500" /> {employee.email}</span>
-                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-indigo-500" /> {employee.phone || "+1 (555) 019-2834"}</span>
-                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-indigo-500" /> {employee.location || "HQ - Austin, TX"}</span>
+              <div className="flex items-center gap-4 text-xs text-[#52677F] pt-1 flex-wrap">
+                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-[#2563EB]" /> {employee.email}</span>
+                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-[#2563EB]" /> {employee.phone || "+1 (555) 019-2834"}</span>
+                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#2563EB]" /> {employee.location || "HQ - Austin, TX"}</span>
               </div>
             </div>
           </div>
 
           {/* Profile Completion Indicator */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 shrink-0 w-full md:w-56 space-y-1.5">
+          <div className="p-3.5 rounded-2xl bg-[#F6F9FD] border border-[#DCE6F2] shrink-0 w-full md:w-56 space-y-1.5">
             <div className="flex justify-between items-center text-xs font-bold">
-              <span className="text-slate-500">Profile Completion</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">95%</span>
+              <span className="text-[#52677F]">Profile Completion</span>
+              <span className="text-[#2563EB] font-extrabold">95%</span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-              <div className="bg-indigo-600 h-full rounded-full" style={{ width: "95%" }} />
+            <div className="w-full bg-[#E2E8F0] h-2 rounded-full overflow-hidden">
+              <div className="bg-[#2563EB] h-full rounded-full" style={{ width: "95%" }} />
             </div>
-            <p className="text-[10px] text-slate-400">1 missing document (Medical Waiver)</p>
+            <p className="text-[10px] text-[#52677F]">1 missing document (Medical Waiver)</p>
           </div>
         </div>
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar border-b border-[#DCE6F2]">
         {PROFILE_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -320,8 +327,8 @@ export default function EmployeeProfile() {
               onClick={() => setActiveTab(tab.id)}
               className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 isActive
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  ? "bg-[#2563EB] text-white shadow-2xs font-bold"
+                  : "bg-[#F6F9FD] text-[#52677F] border border-[#DCE6F2] hover:bg-white hover:text-[#102A43]"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -346,6 +353,7 @@ export default function EmployeeProfile() {
         )}
         {activeTab === "personal" && <PersonalTab employee={employee} />}
         {activeTab === "employment" && <EmploymentOrgTab employee={employee} allEmployees={allEmployees} />}
+        {activeTab === "transport" && <EmployeeTransportTab employee={employee} />}
         {activeTab === "timeline" && <TimelineTab timeline={timeline} />}
         {activeTab === "documents" && <DocumentCenterTab documents={documents} onUploadDocument={handleUploadDocument} />}
         {activeTab === "leave" && <LeaveWorkspaceTab leaveRequests={leaveRequests} />}

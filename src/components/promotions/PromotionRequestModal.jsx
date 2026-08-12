@@ -171,10 +171,10 @@ export default function PromotionRequestModal({ open, onClose, onSave, employees
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="outline" onClick={() => handleSubmit("Draft")} className="text-gray-600">Save Draft</Button>
-          <Button onClick={() => handleSubmit("Pending HR")} style={{ background: "#0F1B2D" }} className="text-white"
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DCE6F2]">
+          <Button variant="outline" onClick={onClose} className="rounded-xl font-bold border-[#DCE6F2] text-[#52677F] hover:bg-[#F6F9FD]">Cancel</Button>
+          <Button variant="outline" onClick={() => handleSubmit("Draft")} className="rounded-xl font-bold border-[#DCE6F2] text-[#52677F] hover:bg-[#F6F9FD]">Save Draft</Button>
+          <Button onClick={() => handleSubmit("Pending HR")} className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-2xs"
             disabled={!form.employee_id || !form.proposed_title || !form.justification}>
             Submit for HR Review →
           </Button>

@@ -6,12 +6,14 @@ import { Settings2, RefreshCw } from "lucide-react";
 import BudgetSummaryBar from "@/components/budget/BudgetSummaryBar";
 import DepartmentBudgetRow from "@/components/budget/DepartmentBudgetRow";
 import BudgetSetupModal from "@/components/budget/BudgetSetupModal";
+import { useToast } from "@/contexts/ToastContext";
 
 const DEPARTMENTS = ["Engineering","Sales","Marketing","HR","Finance","Operations","Design","Legal","Executive"];
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 export default function Budget() {
+  const toast = useToast();
   const [employees, setEmployees] = useState([]);
   const [payrollRecords, setPayrollRecords] = useState([]);
   const [promotionRequests, setPromotionRequests] = useState([]);
@@ -132,9 +134,10 @@ export default function Budget() {
           : base44.entities.DepartmentBudget.create(item)
       ));
       setModalOpen(false);
+      toast.success("Department budgets saved successfully.");
       load();
     } catch {
-      alert("Failed to save budgets. Please try again.");
+      toast.error("Failed to save budgets. Please try again.");
     }
   };
 

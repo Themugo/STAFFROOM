@@ -31,7 +31,7 @@ export default function UserAvatar({ src, name = '', size = 'md', className = ''
 
   return (
     <div
-      className={`${sizeClasses[size] || sizeClasses.md} rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-semibold flex items-center justify-center shrink-0 ${className}`}
+      className={`${sizeClasses[size] || sizeClasses.md} rounded-full bg-[#EAF3FF] text-[#2563EB] font-bold flex items-center justify-center shrink-0 border border-[#2563EB]/20 ${className}`}
     >
       {initials || 'U'}
     </div>

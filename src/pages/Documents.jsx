@@ -5,12 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, FileText, Download, Trash2, Sparkles, Upload, Eye, EyeOff, UploadCloud, UserCircle } from "lucide-react";
+import { Plus, Search, FileText, Download, Trash2, Sparkles, Upload, Eye, EyeOff, UploadCloud, UserCircle, RefreshCw } from "lucide-react";
 import { format, isPast, isWithinInterval, addDays } from "date-fns";
 import AiDocumentPanel from "../components/documents/AiDocumentPanel";
 import BulkUploadModal from "../components/documents/BulkUploadModal";
 import SingleDocModal from "../components/documents/SingleDocModal";
 import EmployeeDocPortal from "../components/documents/EmployeeDocPortal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonTable } from "@/components/ui/SkeletonLoaders";
 import { resolveDocumentAccess } from "@/utils/documentAccess";
 
 const DOC_TYPES = ["Pay Slip", "Contract", "Tax Document", "ID", "Certificate", "NDA", "Policy", "Performance Review", "Onboarding", "Other"];
@@ -36,7 +39,10 @@ function getExpiryStatus(expiry) {
   return "ok";
 }
 
+import { useToast } from "@/contexts/ToastContext";
+
 export default function Documents() {
+  const toast = useToast();
   const [docs, setDocs] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [myEmployee, setMyEmployee] = useState(null);
@@ -137,34 +143,63 @@ export default function Documents() {
 
   const handleSaveSingle = async (data) => {
     try {
-      if (editing) await base44.entities.EmployeeDocument.update(editing.id, data);
-      else await base44.entities.EmployeeDocument.create(data);
+      if (editing) {
+        await base44.entities.EmployeeDocument.update(editing.id, data);
+        toast.success("Document updated.");
+      } else {
+        await base44.entities.EmployeeDocument.create(data);
+        toast.success("New document saved.");
+      }
       setSingleModalOpen(false); setEditing(null); load();
     } catch {
-      alert("Failed to save document. Please try again.");
+      toast.error("Failed to save document. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this document?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.EmployeeDocument.delete(id);
+      await base44.entities.EmployeeDocument.delete(confirmDeleteId);
+      toast.success("Document deleted successfully.");
+      setConfirmDeleteId(null);
       load();
     } catch {
-      alert("Failed to delete document. Please try again.");
+      toast.error("Failed to delete document. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" />
+    <div className="max-w-7xl mx-auto p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+      <SkeletonTable rows={5} />
     </div>
   );
 
   if (loadError) return (
-    <div className="text-center py-20 text-gray-400">
-      <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p className="text-sm font-medium text-red-500">{loadError}</p>
+    <div className="max-w-xl mx-auto my-12 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 p-8 rounded-3xl text-center space-y-4">
+      <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+        <FileText size={24} />
+      </div>
+      <div>
+        <h3 className="text-base font-black text-slate-900 dark:text-white">Unable to Load Documents</h3>
+        <p className="text-xs text-slate-500 mt-1">{loadError}</p>
+      </div>
+      <button
+        onClick={load}
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-colors cursor-pointer"
+      >
+        <RefreshCw size={14} />
+        <span>Retry Loading Documents</span>
+      </button>
     </div>
   );
 
@@ -352,6 +387,17 @@ export default function Documents() {
       />
 
       {analyzingDoc && <AiDocumentPanel doc={analyzingDoc} onClose={() => setAnalyzingDoc(null)} />}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Document"
+        message="Are you sure you want to delete this document record? This action cannot be undone."
+        confirmLabel="Delete Document"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

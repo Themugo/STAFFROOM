@@ -119,9 +119,9 @@ export default function PayrollModal({ open, onClose, onSave, record, employees 
           </div>
 
           {/* Net Pay Preview */}
-          <div className="rounded-xl p-4" style={{ background: "#0F1B2D" }}>
-            <p className="text-white/60 text-xs mb-1">Net Pay</p>
-            <p className="text-white text-2xl font-bold">${netPay.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <div className="rounded-2xl p-4 bg-[#EAF3FF] border border-[#2563EB]/20">
+            <p className="text-[#2563EB] text-xs font-semibold mb-1">Calculated Net Pay</p>
+            <p className="text-[#102A43] text-2xl font-black">${netPay.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -148,8 +148,8 @@ export default function PayrollModal({ open, onClose, onSave, record, employees 
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" className="text-white" style={{ background: "#0F1B2D" }}>
+            <Button type="button" variant="outline" onClick={onClose} className="rounded-xl font-bold border-[#DCE6F2] text-[#52677F] hover:bg-[#F6F9FD]">Cancel</Button>
+            <Button type="submit" className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-2xs">
               {record ? "Save Changes" : "Create Record"}
             </Button>
           </div>

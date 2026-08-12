@@ -312,21 +312,26 @@ export default function Leave() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Leave Operations Center</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {requests.length} total requests · {pendingCount} pending approvals · {policies.filter(p=>p.is_enabled).length} active policies
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-slate-900 border border-[#DCE6F2] dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF3FF] dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 shrink-0 shadow-2xs">
+            <Clock size={22} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#102A43] dark:text-white">Leave Operations Center</h2>
+            <p className="text-xs sm:text-sm text-[#52677F] dark:text-slate-400 mt-0.5">
+              {requests.length} total requests · {pendingCount} pending approvals · {policies.filter(p=>p.is_enabled).length} active policies
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap shrink-0">
           <Button onClick={exportCSV} variant="outline" className="gap-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
             <Download className="w-4 h-4" /> Export CSV
           </Button>
           <Button onClick={() => setAiOpen(true)} variant="outline" className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300">
             <Sparkles className="w-4 h-4" /> AI Assistant
           </Button>
-          <Button onClick={() => setAddOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-600/20">
+          <Button onClick={() => setAddOpen(true)} className="bg-[#2563EB] hover:bg-blue-700 text-white gap-2 shadow-xs cursor-pointer">
             <Plus className="w-4 h-4" /> New Leave Request
           </Button>
         </div>

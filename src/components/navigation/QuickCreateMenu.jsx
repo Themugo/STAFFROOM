@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, UserPlus, Palmtree, DollarSign, FileUp, Building2, Sparkles, ChevronDown } from "lucide-react";
+import { Plus, UserPlus, Palmtree, DollarSign, FileUp, ChevronDown, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
@@ -16,7 +16,7 @@ export default function QuickCreateMenu() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white px-3.5 py-2 rounded-2xl font-bold text-xs shadow-md shadow-indigo-200 dark:shadow-none flex items-center gap-1.5 transition-all cursor-pointer"
+        className="bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-98 text-white px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
       >
         <Plus className="w-4 h-4" />
         <span className="hidden sm:inline">Quick Action</span>
@@ -26,34 +26,34 @@ export default function QuickCreateMenu() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-3 z-50 w-56 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-            <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Creation Workflows</p>
+          <div className="absolute right-0 mt-2 z-50 w-56 bg-white rounded-2xl border border-[#DCE6F2] shadow-xl p-2 space-y-1">
+            <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#7890A8]">Workflows & Creation</p>
             <button
               onClick={() => handleAction("Staff")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#52677F] hover:bg-[#EAF3FF] hover:text-[#2563EB] transition-colors text-left cursor-pointer"
             >
-              <UserPlus className="w-4 h-4 text-indigo-500" />
+              <UserPlus className="w-4 h-4 text-[#2563EB]" />
               <span>Add New Employee</span>
             </button>
             <button
               onClick={() => handleAction("Leave")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#52677F] hover:bg-[#EAF3FF] hover:text-[#2563EB] transition-colors text-left cursor-pointer"
             >
-              <Palmtree className="w-4 h-4 text-indigo-500" />
+              <Palmtree className="w-4 h-4 text-[#2563EB]" />
               <span>Request Leave / Time Off</span>
             </button>
             <button
               onClick={() => handleAction("Payroll")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#52677F] hover:bg-[#EAF3FF] hover:text-[#2563EB] transition-colors text-left cursor-pointer"
             >
-              <DollarSign className="w-4 h-4 text-indigo-500" />
+              <DollarSign className="w-4 h-4 text-[#2563EB]" />
               <span>Run Payroll Cycle</span>
             </button>
             <button
               onClick={() => handleAction("Documents")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#52677F] hover:bg-[#EAF3FF] hover:text-[#2563EB] transition-colors text-left cursor-pointer"
             >
-              <FileUp className="w-4 h-4 text-indigo-500" />
+              <FileUp className="w-4 h-4 text-[#2563EB]" />
               <span>Upload Document</span>
             </button>
           </div>

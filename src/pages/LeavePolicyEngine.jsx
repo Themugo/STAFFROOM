@@ -7,7 +7,7 @@ import Modal from '../components/ui/Modal'
 import StatCard from '../components/ui/StatCard'
 import EmptyState from '../components/ui/EmptyState'
 import Spinner from '../components/ui/Spinner'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import {
   CalendarDays,
   ListChecks,
@@ -347,7 +347,7 @@ export default function LeavePolicyEngine() {
 
       {/* Tabs */}
       <div className="mb-6">
-        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
+        <CustomTabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
       </div>
 
       {/* ---------- Policies Tab ---------- */}

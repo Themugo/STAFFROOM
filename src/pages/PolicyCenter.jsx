@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,9 +90,17 @@ export default function PolicyCenter() {
           </p>
         </div>
 
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-600/20">
-          <Plus className="w-4 h-4" /> Publish New Policy
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => window.location.href = createPageUrl("BusinessRulesStudio")}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2 shadow-md cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4" /> Launch Zero-Code Business Rules Studio
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Plus className="w-4 h-4" /> Publish New Policy
+          </Button>
+        </div>
       </div>
 
       {/* Compliance Overview Banner */}

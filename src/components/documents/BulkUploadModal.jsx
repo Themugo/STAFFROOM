@@ -258,32 +258,32 @@ export default function BulkUploadModal({ open, onClose, employees, currentUser,
 
             {/* File Drop Zone */}
             <div
-              className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-gray-400 transition-colors"
+              className="border-2 border-dashed border-[#DCE6F2] hover:border-[#2563EB]/40 bg-[#F6F9FD] rounded-2xl p-8 text-center transition-colors"
               onDragOver={e => e.preventDefault()}
               onDrop={handleFileDrop}
             >
               <input type="file" id="bulk-upload" multiple className="hidden" onChange={handleFileDrop} />
-              <label htmlFor="bulk-upload" className="cursor-pointer">
-                <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-medium text-gray-600">Drag & drop files or <span className="text-blue-600 underline">browse</span></p>
-                <p className="text-xs text-gray-400 mt-1">PDF, DOCX, PNG, JPG — multiple files supported</p>
+              <label htmlFor="bulk-upload" className="cursor-pointer flex flex-col items-center">
+                <Upload className="w-8 h-8 text-[#2563EB] mb-2" />
+                <p className="text-sm font-semibold text-[#102A43]">Drag & drop files or <span className="text-[#2563EB] underline">browse</span></p>
+                <p className="text-xs text-[#52677F] mt-1">PDF, DOCX, PNG, JPG — multiple files supported</p>
               </label>
             </div>
 
             {files.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-600">{files.length} file{files.length !== 1 ? "s" : ""} selected</p>
+                <p className="text-xs font-semibold text-[#102A43]">{files.length} file{files.length !== 1 ? "s" : ""} selected</p>
                 <div className="max-h-40 overflow-y-auto space-y-1.5">
                   {files.map((f, i) => {
                     const prog = progress[i];
                     return (
-                      <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2 text-xs">
-                        <div className="flex-1 truncate text-gray-700">{f.name}</div>
+                      <div key={i} className="flex items-center gap-3 bg-[#F6F9FD] border border-[#DCE6F2] rounded-xl px-3 py-2 text-xs">
+                        <div className="flex-1 truncate text-[#102A43] font-medium">{f.name}</div>
                         {prog?.status === "done" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />}
-                        {prog?.status === "uploading" && <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin flex-shrink-0" />}
+                        {prog?.status === "uploading" && <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-[#2563EB] rounded-full animate-spin flex-shrink-0" />}
                         {prog?.status === "error" && <span className="text-xs text-red-600 flex-shrink-0">Failed</span>}
                         {!prog && (
-                          <button onClick={() => removeFile(i)} className="text-gray-400 hover:text-red-500 flex-shrink-0">
+                          <button onClick={() => removeFile(i)} className="text-[#52677F] hover:text-red-500 flex-shrink-0 cursor-pointer">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -294,13 +294,12 @@ export default function BulkUploadModal({ open, onClose, employees, currentUser,
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-2 border-t">
-              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+            <div className="flex justify-end gap-3 pt-2 border-t border-[#DCE6F2]">
+              <Button type="button" variant="outline" onClick={handleClose} className="rounded-xl font-bold border-[#DCE6F2] text-[#52677F] hover:bg-[#F6F9FD]">Cancel</Button>
               <Button
                 onClick={handleUpload}
                 disabled={running || files.length === 0 || (mode === "department" && !targetDept) || (mode === "individual" && !targetEmpId)}
-                className="text-white gap-2"
-                style={{ background: "#0F1B2D" }}
+                className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-2xs gap-2"
               >
                 {running ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading…</> : <><Upload className="w-4 h-4" /> Upload {files.length > 0 ? `${files.length} File${files.length !== 1 ? "s" : ""}` : ""}</>}
               </Button>

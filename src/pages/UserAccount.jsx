@@ -26,12 +26,12 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationContext'
 import { formatDate, formatDateTime, timeAgo } from '../lib/format'
 import PageHeader from '../components/ui/PageHeader'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import StatCard from '../components/ui/StatCard'
 import StatusBadge from '../components/ui/StatusBadge'
 import EmptyState from '../components/ui/EmptyState'
 import Spinner from '../components/ui/Spinner'
-import Avatar from '../components/ui/Avatar'
+import UserAvatar from '../components/ui/UserAvatar'
 import ChangePasswordModal from '../components/ChangePasswordModal'
 
 const TABS = [
@@ -250,7 +250,7 @@ export default function UserAccount() {
           description="View and manage your profile, security, and sessions"
         />
 
-        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
+        <CustomTabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
         <div className="mt-6">
           {activeTab === 'profile' && (
@@ -319,7 +319,7 @@ function ProfileTab({ profile, user, fullName, setFullName, onSave, saving, orga
       <div className="flex flex-col md:flex-row gap-6">
         {/* Avatar + role */}
         <div className="flex flex-col items-center gap-3">
-          <Avatar name={profile.full_name} size="xl" />
+          <UserAvatar name={profile.full_name} size="xl" />
           <StatusBadge status={profile.role ? profile.role.toUpperCase() : 'INACTIVE'} label={profile.role || 'User'} />
         </div>
 

@@ -102,11 +102,11 @@ export default function SingleDocModal({ open, onClose, onSave, employees, doc }
 
           <div className="space-y-1.5">
             <Label>File</Label>
-            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-gray-300 transition-colors">
+            <div className="border-2 border-dashed border-[#DCE6F2] hover:border-[#2563EB]/40 bg-[#F6F9FD] rounded-2xl p-4 text-center transition-colors">
               <input type="file" id="single-file-upload" className="hidden" onChange={e => setFile(e.target.files[0])} />
-              <label htmlFor="single-file-upload" className="cursor-pointer">
-                <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                <p className="text-sm text-gray-500">{file ? file.name : (form.file_url ? "Replace file" : "Click to upload")}</p>
+              <label htmlFor="single-file-upload" className="cursor-pointer flex flex-col items-center">
+                <Upload className="w-5 h-5 text-[#2563EB] mb-1" />
+                <p className="text-xs font-semibold text-[#102A43]">{file ? file.name : (form.file_url ? "Replace file" : "Click to upload file")}</p>
               </label>
             </div>
           </div>
@@ -116,11 +116,11 @@ export default function SingleDocModal({ open, onClose, onSave, employees, doc }
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} placeholder="Optional notes…" />
           </div>
 
-          {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+          {uploadError && <p className="text-xs font-medium text-red-600">{uploadError}</p>}
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={uploading} className="text-white" style={{ background: "#0F1B2D" }}>
+            <Button type="button" variant="outline" onClick={onClose} className="rounded-xl font-bold border-[#DCE6F2] text-[#52677F] hover:bg-[#F6F9FD]">Cancel</Button>
+            <Button type="submit" disabled={uploading} className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-2xs">
               {uploading ? "Uploading…" : doc ? "Save Changes" : "Upload"}
             </Button>
           </div>

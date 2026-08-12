@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   CheckCircle2, XCircle, Clock, ShieldCheck, Filter, Search, Check,
-  UserCheck, AlertCircle, ArrowUpRight, History, Layers, MessageSquare, ChevronRight
+  UserCheck, AlertCircle, ArrowUpRight, History, Layers, MessageSquare, ChevronRight, Sliders, ListChecks
 } from "lucide-react";
+import ApprovalConfigEditor from "../components/approval/ApprovalConfigEditor";
 
 export default function ApprovalCenter() {
+  const [mainTab, setMainTab] = useState("queue"); // "queue" | "config"
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -187,7 +189,36 @@ export default function ApprovalCenter() {
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Main Mode Tab Switcher */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button
+          onClick={() => setMainTab("queue")}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            mainTab === "queue"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+          }`}
+        >
+          <ListChecks size={15} /> Approval Queue & Active Actions
+        </button>
+
+        <button
+          onClick={() => setMainTab("config")}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            mainTab === "config"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+          }`}
+        >
+          <Sliders size={15} /> Approval Rules & Escalation Configuration
+        </button>
+      </div>
+
+      {mainTab === "config" ? (
+        <ApprovalConfigEditor />
+      ) : (
+        <>
+          {/* Stats Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between">
           <div>
@@ -416,6 +447,8 @@ export default function ApprovalCenter() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

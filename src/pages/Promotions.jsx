@@ -3,14 +3,20 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, ArrowUpCircle, DollarSign, CheckCircle2, Clock } from "lucide-react";
+import { Plus, Search, ArrowUpCircle, DollarSign, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import PromotionRequestModal from "@/components/promotions/PromotionRequestModal";
 import ApprovalModal from "@/components/promotions/ApprovalModal";
 import PromotionCard from "@/components/promotions/PromotionCard";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonCard } from "@/components/ui/SkeletonLoaders";
 
 const STATUS_TABS = ["All", "Draft", "Pending HR", "Pending Finance", "Approved", "Rejected"];
 
+import { useToast } from "@/contexts/ToastContext";
+
 export default function Promotions() {
+  const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +26,8 @@ export default function Promotions() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [approvalTarget, setApprovalTarget] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoadError(null);
@@ -40,21 +48,35 @@ export default function Promotions() {
 
   const handleSave = async (data) => {
     try {
-      if (editing) await base44.entities.PromotionRequest.update(editing.id, data);
-      else await base44.entities.PromotionRequest.create(data);
+      if (editing) {
+        await base44.entities.PromotionRequest.update(editing.id, data);
+        toast.success("Promotion request updated.");
+      } else {
+        await base44.entities.PromotionRequest.create(data);
+        toast.success("New promotion request created.");
+      }
       setModalOpen(false); setEditing(null); load();
     } catch {
-      alert("Failed to save promotion request. Please try again.");
+      toast.error("Failed to save promotion request. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this promotion request?")) return;
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.PromotionRequest.delete(id);
+      await base44.entities.PromotionRequest.delete(confirmDeleteId);
+      toast.success("Promotion request deleted.");
+      setConfirmDeleteId(null);
       load();
     } catch {
-      alert("Failed to delete promotion request. Please try again.");
+      toast.error("Failed to delete promotion request. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -78,9 +100,10 @@ export default function Promotions() {
 
     try {
       await base44.entities.PromotionRequest.update(id, update);
+      toast.success(`Decision recorded: ${decision}`);
       setApprovalTarget(null); load();
     } catch {
-      alert("Failed to record decision. Please try again.");
+      toast.error("Failed to record decision. Please try again.");
     }
   };
 
@@ -103,17 +126,31 @@ export default function Promotions() {
     : "—";
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" />
+    <div className="max-w-7xl mx-auto space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
     </div>
   );
 
   if (loadError) return (
-    <div className="text-center py-20">
-      <p className="text-sm font-medium text-red-600">{loadError}</p>
-      <button onClick={load} className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors">
-        Retry
-      </button>
+    <div className="max-w-xl mx-auto my-12 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 p-8 rounded-3xl text-center space-y-4">
+      <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+        <ArrowUpCircle size={24} />
+      </div>
+      <div>
+        <h3 className="text-base font-black text-slate-900 dark:text-white">Unable to Load Promotion Requests</h3>
+        <p className="text-xs text-slate-500 mt-1">{loadError}</p>
+      </div>
+      <Button
+        onClick={load}
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-colors cursor-pointer"
+      >
+        <RefreshCw size={14} />
+        <span>Retry Loading</span>
+      </Button>
     </div>
   );
 
@@ -186,10 +223,21 @@ export default function Promotions() {
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="text-center py-24 text-gray-400">
-          <ArrowUpCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          <p className="font-medium">No promotion requests found</p>
-          <p className="text-sm mt-1">Create the first one to kick off the approval workflow.</p>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+          <EmptyState
+            icon={ArrowUpCircle}
+            title="No Promotion Requests Found"
+            description="No promotion request records match your search query or status filter."
+            action={
+              <Button
+                onClick={() => { setSearch(""); setStatusTab("All"); }}
+                variant="outline"
+                className="text-xs cursor-pointer"
+              >
+                Reset Filters
+              </Button>
+            }
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -219,6 +267,17 @@ export default function Promotions() {
         onClose={() => setApprovalTarget(null)}
         request={approvalTarget}
         onDecision={handleDecision}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Promotion Request"
+        message="Are you sure you want to delete this promotion request? This action cannot be undone."
+        confirmLabel="Delete Request"
+        danger={true}
+        loading={deleting}
       />
     </div>
   );

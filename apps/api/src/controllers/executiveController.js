@@ -75,6 +75,7 @@ const getExecutiveDashboard = async (req, res) => {
             performanceReviews: {
               where: {
                 createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) }
+              }
             }
           }
         }
@@ -356,6 +357,7 @@ const getFinancialSummary = async (req, res) => {
             payrollPayslips: {
               where: {
                 payPeriodStart: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+              }
             }
           }
         }

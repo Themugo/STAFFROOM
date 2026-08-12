@@ -15,6 +15,8 @@ import {
 } from '../hooks/useWebsite'
 import { websiteService } from '../services/website'
 import { formatDate, initials } from '../lib/format'
+import SEO from '../components/common/SEO'
+import { SEO_CONFIG } from '../config/seo.config'
 
 /* -------------------------------------------------------------------------- */
 /*  Icon mapping — DB stores icon names as strings                            */
@@ -654,24 +656,17 @@ export default function BlogPage() {
 
   useReveal()
 
-  useEffect(() => {
-    if (seo?.metaTitle) document.title = seo.metaTitle
-    if (seo?.metaDescription) {
-      let tag = document.querySelector('meta[name="description"]')
-      if (!tag) {
-        tag = document.createElement('meta')
-        tag.setAttribute('name', 'description')
-        document.head.appendChild(tag)
-      }
-      tag.setAttribute('content', seo.metaDescription)
-    }
-  }, [seo])
-
   if (siteLoading) return <PageSkeleton />
   if (siteError) return <PageError onRetry={refresh} />
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen bg-white">
+      <SEO
+        title={seo?.metaTitle || SEO_CONFIG.pages.blog.title}
+        description={seo?.metaDescription || SEO_CONFIG.pages.blog.description}
+        canonical={SEO_CONFIG.pages.blog.canonical}
+        breadcrumbs={[{ name: 'Home', item: '/' }, { name: 'Blog', item: '/blog' }]}
+      />
       <Navigation settings={settings} navHeader={navHeader} navAuth={navAuth} />
 
       <main>

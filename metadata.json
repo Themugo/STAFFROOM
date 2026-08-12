@@ -1,6 +1,6 @@
 {
   "name": "STAFFROOM",
-  "description": "Enterprise Staff & HR Operations Platform with Recruitment ATS, Applicant Pipeline, Digital Onboarding, Probation Management, Leave Planner, Payroll, Performance Reviews, and Workforce Analytics.",
+  "description": "Enterprise Staff & HR Operations Platform with ATS, Onboarding, Leave, Payroll, Performance, Transport, Brand Experience, Business Rules, Enterprise Knowledge & SOP Workplace, and Visual Enterprise Automation Studio.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Bell, Shield, AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Building2, Bell, Shield, AlertTriangle, Palette, ArrowRight } from "lucide-react";
 
 const DEFAULTS = {
   company_name: "StaffCore Inc.",
@@ -97,6 +98,25 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl space-y-6">
+      {/* BRAND STUDIO BANNER */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 rounded-2xl p-5 text-white flex items-center justify-between shadow-lg">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 font-mono text-[10px] font-bold text-cyan-400 uppercase">
+            <Palette size={14} /> White-Label & Theme Studio
+          </div>
+          <h3 className="font-bold text-sm text-white">Brand Experience Studio</h3>
+          <p className="text-xs text-slate-300">
+            Configure logos, themes, custom terminology, fonts & localization.
+          </p>
+        </div>
+        <Link
+          to="/BrandExperienceStudio"
+          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shrink-0"
+        >
+          Open Studio <ArrowRight size={14} />
+        </Link>
+      </div>
+
       {error && (
         <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-xs text-red-700">
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />

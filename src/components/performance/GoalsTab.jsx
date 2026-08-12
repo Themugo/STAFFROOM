@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Target, Pencil, Trash2, CheckCircle2, Clock, CircleDot, XCircle } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
 import GoalModal from "./GoalModal";
+import { useToast } from "@/contexts/ToastContext";
 
 const PERIODS = ["All", "Q1 2025","Q2 2025","Q3 2025","Q4 2025","Q1 2026","Q2 2026","Q3 2026","Q4 2026"];
 
@@ -25,6 +28,7 @@ const CAT_COLORS = {
 };
 
 export default function GoalsTab({ goals, employees, onReload }) {
+  const toast = useToast();
   const [search, setSearch] = useState("");
   const [periodFilter, setPeriodFilter] = useState("Q2 2026");
   const [modalOpen, setModalOpen] = useState(false);
@@ -32,24 +36,38 @@ export default function GoalsTab({ goals, employees, onReload }) {
 
   const handleSave = async (data) => {
     try {
-      if (editing) await base44.entities.PerformanceGoal.update(editing.id, data);
-      else await base44.entities.PerformanceGoal.create(data);
+      if (editing) {
+        await base44.entities.PerformanceGoal.update(editing.id, data);
+        toast.success("Goal updated.");
+      } else {
+        await base44.entities.PerformanceGoal.create(data);
+        toast.success("New goal created.");
+      }
       setModalOpen(false); setEditing(null); onReload();
     } catch {
-      // Previously unhandled: a failed save left the modal open with no
-      // feedback at all — no error, but also no confirmation, so a user
-      // could easily assume it worked and navigate away losing their input.
-      alert("Failed to save goal. Please try again.");
+      toast.error("Failed to save goal. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this goal?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.PerformanceGoal.delete(id);
+      await base44.entities.PerformanceGoal.delete(confirmDeleteId);
+      toast.success("Goal deleted successfully.");
+      setConfirmDeleteId(null);
       onReload();
     } catch {
-      alert("Failed to delete goal. Please try again.");
+      toast.error("Failed to delete goal. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -86,10 +104,21 @@ export default function GoalsTab({ goals, employees, onReload }) {
       </div>
 
       {Object.keys(byEmployee).length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
-          <Target className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          <p className="font-medium">No goals found</p>
-          <p className="text-sm mt-1">Add goals for employees to track quarterly progress.</p>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+          <EmptyState
+            icon={Target}
+            title="No Performance Goals Found"
+            description="No employee goals match your search or period filter."
+            action={
+              <Button
+                onClick={() => { setSearch(""); setPeriodFilter("All"); }}
+                variant="outline"
+                className="text-xs cursor-pointer"
+              >
+                Reset Filters
+              </Button>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-4">
@@ -159,6 +188,17 @@ export default function GoalsTab({ goals, employees, onReload }) {
 
       <GoalModal open={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }}
         onSave={handleSave} employees={employees} goal={editing} />
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Performance Goal"
+        message="Are you sure you want to delete this goal? This action cannot be undone."
+        confirmLabel="Delete Goal"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

@@ -1,1459 +1,939 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
-  Package,
-  Plus,
-  Download,
-  Wrench,
-  UserCheck,
-  UserMinus,
-  CheckCircle,
-  Boxes,
-  CircleDollarSign,
-  CalendarClock,
-  History,
-  Search,
+  Boxes, Package, Wrench, UserCheck, CheckCircle, CircleDollarSign, CalendarClock,
+  History, Search, Plus, Filter, Download, Building2, Truck, ShieldCheck, AlertTriangle,
+  QrCode, Barcode, Bot, Sparkles, RefreshCw, Layers, Eye, Send, Check, X, Tag, Laptop,
+  Cpu, Smartphone, Car, Shield, FileText, ArrowRightLeft, Clock, DollarSign, Award,
+  Sliders, UserMinus, BarChart3, PieChart, FileCheck, AlertCircle, Scan, Trash2, Edit3,
+  MapPin, CheckSquare, ShieldAlert
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { useDepartment } from '../contexts/DepartmentContext'
 import { useNotifications } from '../contexts/NotificationContext'
-import { formatDate, formatCurrency } from '../lib/format'
-import PageHeader from '../components/ui/PageHeader'
-import Modal from '../components/ui/Modal'
-import StatCard from '../components/ui/StatCard'
-import DataTable from '../components/ui/DataTable'
-import StatusBadge from '../components/ui/StatusBadge'
-import EmptyState from '../components/ui/EmptyState'
-import Spinner from '../components/ui/Spinner'
-import Tabs from '../components/ui/Tabs'
-import SearchInput from '../components/ui/SearchInput'
+import {
+  PageHeader,
+  StatCard,
+  StatusBadge,
+  EmptyState,
+  Modal,
+  SearchInput
+} from '../components/ui'
 
-// ---- Constants ---------------------------------------------------------------
+// Mock Data Generators for Enterprise Asset & Warehouse OS
+const INITIAL_ASSETS = [
+  {
+    id: 'AST-2026-001',
+    assetTag: 'TAG-ENG-082',
+    name: 'MacBook Pro 16" M3 Max 64GB',
+    category: 'Computers & Laptops',
+    deptId: 'dept_eng',
+    department: 'Engineering',
+    warehouse: 'HQ Central Warehouse',
+    zone: 'Zone A - Rack 04',
+    serialNumber: 'C02G4012MD6R',
+    manufacturer: 'Apple Inc',
+    model: 'MacBook Pro 16-inch 2024',
+    purchaseDate: '2024-03-15',
+    purchaseCost: 3499,
+    currentValue: 2624,
+    condition: 'EXCELLENT',
+    status: 'IN_USE',
+    assignedTo: 'David Miller',
+    custodian: 'David Miller',
+    warrantyExpiry: '2027-03-15',
+    depreciationMethod: 'Straight-Line (3 Yrs)',
+    nextMaintenance: '2026-09-15',
+    qrCode: 'QR-AST-2026-001'
+  },
+  {
+    id: 'AST-2026-002',
+    assetTag: 'TAG-ENG-045',
+    name: 'Dell UltraSharp 32" 4K USB-C Monitor',
+    category: 'Monitors & Displays',
+    deptId: 'dept_eng',
+    department: 'Engineering',
+    warehouse: 'HQ Central Warehouse',
+    zone: 'Zone A - Rack 02',
+    serialNumber: 'CN-0491823-102',
+    manufacturer: 'Dell',
+    model: 'U3223QE',
+    purchaseDate: '2024-01-10',
+    purchaseCost: 850,
+    currentValue: 550,
+    condition: 'GOOD',
+    status: 'IN_USE',
+    assignedTo: 'Alex Rivers',
+    custodian: 'Alex Rivers',
+    warrantyExpiry: '2027-01-10',
+    depreciationMethod: 'Straight-Line (3 Yrs)',
+    nextMaintenance: '2026-11-01',
+    qrCode: 'QR-AST-2026-002'
+  },
+  {
+    id: 'AST-2026-003',
+    assetTag: 'TAG-HR-012',
+    name: 'Herman Miller Aeron Ergonomic Chair',
+    category: 'Furniture',
+    deptId: 'dept_hr',
+    department: 'People Operations',
+    warehouse: 'Floor 3 Store Room',
+    zone: 'Aisle B - Bay 01',
+    serialNumber: 'HM-AERON-9912',
+    manufacturer: 'Herman Miller',
+    model: 'Aeron Size B',
+    purchaseDate: '2023-06-20',
+    purchaseCost: 1250,
+    currentValue: 900,
+    condition: 'GOOD',
+    status: 'IN_USE',
+    assignedTo: 'Sarah Jenkins',
+    custodian: 'Sarah Jenkins',
+    warrantyExpiry: '2035-06-20',
+    depreciationMethod: 'Straight-Line (10 Yrs)',
+    nextMaintenance: '2027-01-01',
+    qrCode: 'QR-AST-2026-003'
+  },
+  {
+    id: 'AST-2026-004',
+    assetTag: 'TAG-OPS-090',
+    name: 'Toyota RAV4 Hybrid Fleet Vehicle',
+    category: 'Vehicles',
+    deptId: 'dept_ops',
+    department: 'Operations',
+    warehouse: 'HQ Fleet Garage',
+    zone: 'Bay 03',
+    serialNumber: 'VIN-4T1B11HK2839102',
+    manufacturer: 'Toyota',
+    model: 'RAV4 Hybrid XLE',
+    purchaseDate: '2022-11-05',
+    purchaseCost: 32000,
+    currentValue: 21500,
+    condition: 'FAIR',
+    status: 'UNDER_MAINTENANCE',
+    assignedTo: 'James Wilson',
+    custodian: 'James Wilson',
+    warrantyExpiry: '2027-11-05',
+    depreciationMethod: 'Straight-Line (5 Yrs)',
+    nextMaintenance: '2026-08-05',
+    qrCode: 'QR-AST-2026-004'
+  },
+  {
+    id: 'AST-2026-005',
+    assetTag: 'TAG-ENG-108',
+    name: 'Cisco Catalyst 9300 48-Port Switch',
+    category: 'Networking Equipment',
+    deptId: 'dept_eng',
+    department: 'Engineering',
+    warehouse: 'EMEA Distribution Hub',
+    zone: 'Rack Server Room 1',
+    serialNumber: 'FOC2419L0AB',
+    manufacturer: 'Cisco Systems',
+    model: 'C9300-48P',
+    purchaseDate: '2023-09-12',
+    purchaseCost: 4500,
+    currentValue: 3100,
+    condition: 'EXCELLENT',
+    status: 'IN_USE',
+    assignedTo: 'Shared Infrastructure',
+    custodian: 'David Miller',
+    warrantyExpiry: '2028-09-12',
+    depreciationMethod: 'Straight-Line (5 Yrs)',
+    nextMaintenance: '2026-10-15',
+    qrCode: 'QR-AST-2026-005'
+  }
+]
 
-const CATEGORIES = ['LAPTOP', 'PHONE', 'VEHICLE', 'SIM', 'TOOL', 'FURNITURE', 'LICENSE', 'OTHER']
-const CONDITIONS = ['NEW', 'GOOD', 'FAIR', 'POOR']
-const MAINTENANCE_TYPES = ['REPAIR', 'SERVICE', 'UPGRADE', 'INSPECTION']
+const INITIAL_WAREHOUSES = [
+  {
+    id: 'wh-1',
+    name: 'HQ Central Warehouse',
+    code: 'WH-HQ-01',
+    location: 'Building A, Ground Floor',
+    manager: 'Robert Vance',
+    zonesCount: 8,
+    totalItems: 420,
+    totalValue: 385000,
+    capacityPct: 78
+  },
+  {
+    id: 'wh-2',
+    name: 'Floor 3 Store Room',
+    code: 'WH-FL3-02',
+    location: 'Main Tower, Floor 3',
+    manager: 'Emma Watson',
+    zonesCount: 3,
+    totalItems: 110,
+    totalValue: 92000,
+    capacityPct: 45
+  },
+  {
+    id: 'wh-3',
+    name: 'EMEA Distribution Hub',
+    code: 'WH-EMEA-03',
+    location: 'London Depot, Unit 4',
+    manager: 'Claire Dupont',
+    zonesCount: 12,
+    totalItems: 850,
+    totalValue: 740000,
+    capacityPct: 88
+  }
+]
 
-const EMPTY_ASSET = {
-  name: '',
-  asset_tag: '',
-  category: 'LAPTOP',
-  serial_number: '',
-  purchase_date: '',
-  purchase_cost: '',
-  condition: 'NEW',
-}
+const INITIAL_CONSUMABLES = [
+  {
+    id: 'csm-1',
+    name: 'HP LaserJet Enterprise Toner Cartridge Black',
+    category: 'Printer Toner',
+    deptId: 'dept_ops',
+    warehouse: 'HQ Central Warehouse',
+    stockLevel: 14,
+    minStock: 10,
+    maxStock: 50,
+    unitCost: 120,
+    reorderStatus: 'NORMAL'
+  },
+  {
+    id: 'csm-2',
+    name: 'CAT6A Shielded Ethernet Cable 10ft (Box x50)',
+    category: 'IT Supplies',
+    deptId: 'dept_eng',
+    warehouse: 'HQ Central Warehouse',
+    stockLevel: 4,
+    minStock: 8,
+    maxStock: 30,
+    unitCost: 180,
+    reorderStatus: 'LOW_STOCK'
+  },
+  {
+    id: 'csm-3',
+    name: 'Ergonomic Keyboard & Mouse Combos',
+    category: 'Peripherals',
+    deptId: 'dept_hr',
+    warehouse: 'Floor 3 Store Room',
+    stockLevel: 18,
+    minStock: 5,
+    maxStock: 25,
+    unitCost: 95,
+    reorderStatus: 'NORMAL'
+  }
+]
 
-const EMPTY_ASSIGNMENT = {
-  asset_id: '',
-  employee_id: '',
-  assignment_date: new Date().toISOString().slice(0, 10),
-}
+const INITIAL_CHECKOUTS = [
+  {
+    id: 'chk-101',
+    assetTag: 'TAG-ENG-082',
+    assetName: 'MacBook Pro 16" M3 Max',
+    borrower: 'David Miller',
+    deptId: 'dept_eng',
+    checkoutDate: '2026-07-01',
+    expectedReturn: '2026-08-30',
+    status: 'ACTIVE_LOAN',
+    conditionOnCheckout: 'NEW',
+    signatureConfirmed: true
+  },
+  {
+    id: 'chk-102',
+    assetTag: 'TAG-OPS-090',
+    assetName: 'Toyota RAV4 Hybrid Vehicle',
+    borrower: 'James Wilson',
+    deptId: 'dept_ops',
+    checkoutDate: '2026-07-28',
+    expectedReturn: '2026-08-02',
+    status: 'OVERDUE',
+    conditionOnCheckout: 'GOOD',
+    signatureConfirmed: true
+  }
+]
 
-const EMPTY_MAINTENANCE = {
-  asset_id: '',
-  maintenance_type: 'SERVICE',
-  scheduled_date: new Date().toISOString().slice(0, 10),
-  notes: '',
-}
+const INITIAL_MAINTENANCE = [
+  {
+    id: 'mnt-01',
+    assetTag: 'TAG-OPS-090',
+    assetName: 'Toyota RAV4 Hybrid Vehicle',
+    type: 'CORRECTIVE_REPAIR',
+    deptId: 'dept_ops',
+    vendor: 'Toyota Official Service Center',
+    scheduledDate: '2026-08-01',
+    estCost: 650,
+    status: 'IN_PROGRESS',
+    notes: 'Brake pads replacement and 40,000 mile hybrid battery checkup.'
+  },
+  {
+    id: 'mnt-02',
+    assetTag: 'TAG-ENG-108',
+    assetName: 'Cisco Catalyst 9300 Switch',
+    type: 'PREVENTIVE_SERVICE',
+    deptId: 'dept_eng',
+    vendor: 'Cisco TAC Support',
+    scheduledDate: '2026-08-15',
+    estCost: 300,
+    status: 'SCHEDULED',
+    notes: 'Firmware upgrade to IOS XE 17.12 and port security audit.'
+  }
+]
 
-// ---- Helpers -----------------------------------------------------------------
-
-const CATEGORY_LABELS = {
-  LAPTOP: 'Laptop',
-  PHONE: 'Phone',
-  VEHICLE: 'Vehicle',
-  SIM: 'SIM',
-  TOOL: 'Tool',
-  FURNITURE: 'Furniture',
-  LICENSE: 'License',
-  OTHER: 'Other',
-}
-
-const CONDITION_LABELS = {
-  NEW: 'New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-}
-
-const CONDITION_COLORS = {
-  NEW: 'green',
-  GOOD: 'blue',
-  FAIR: 'yellow',
-  POOR: 'red',
-}
-
-const MAINTENANCE_TYPE_LABELS = {
-  REPAIR: 'Repair',
-  SERVICE: 'Service',
-  UPGRADE: 'Upgrade',
-  INSPECTION: 'Inspection',
-}
-
-// ---- Component ---------------------------------------------------------------
+const INITIAL_LICENSES = [
+  {
+    id: 'lic-01',
+    name: 'JetBrains All Products Enterprise License',
+    vendor: 'JetBrains s.r.o.',
+    deptId: 'dept_eng',
+    allocatedSeats: 45,
+    totalSeats: 50,
+    costPerSeat: 299,
+    annualCost: 14950,
+    expiryDate: '2026-11-30',
+    complianceStatus: 'COMPLIANT'
+  },
+  {
+    id: 'lic-02',
+    name: 'Microsoft 365 E5 Enterprise Suite',
+    vendor: 'Microsoft Corp',
+    deptId: 'dept_hr',
+    allocatedSeats: 210,
+    totalSeats: 220,
+    costPerSeat: 420,
+    annualCost: 92400,
+    expiryDate: '2027-04-15',
+    complianceStatus: 'COMPLIANT'
+  },
+  {
+    id: 'lic-03',
+    name: 'Figma Enterprise Organization Seats',
+    vendor: 'Figma Inc',
+    deptId: 'dept_eng',
+    allocatedSeats: 28,
+    totalSeats: 25,
+    costPerSeat: 540,
+    annualCost: 13500,
+    expiryDate: '2026-08-20',
+    complianceStatus: 'OVER_ALLOCATED'
+  }
+]
 
 export default function AssetManagement() {
-  const { profile } = useAuth()
-  const { success, error: errorNotify } = useNotifications()
+  const {
+    departments,
+    activeDepartmentId,
+    setActiveDepartmentId,
+    userDepartment,
+    filterByDepartment,
+    isDepartmentScoped
+  } = useDepartment()
 
-  const [activeTab, setActiveTab] = useState('assets')
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(null)
+  const notifications = useNotifications()
+  const showSuccess = notifications?.success || ((msg) => console.log(msg))
 
-  // Data
-  const [assets, setAssets] = useState([])
-  const [employees, setEmployees] = useState([])
-  const [assignments, setAssignments] = useState([])
-  const [maintenanceRecords, setMaintenanceRecords] = useState([])
+  // Main Operating Tabs
+  const [activeTab, setActiveTab] = useState('overview') // overview, assets, warehouses, inventory, checkouts, maintenance, licenses, scanner, ai, analytics, audit
+  const [searchQuery, setSearchQuery] = useState('')
 
-  // Filters
-  const [search, setSearch] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
+  // OS Data States
+  const [assets, setAssets] = useState(INITIAL_ASSETS)
+  const [warehouses, setWarehouses] = useState(INITIAL_WAREHOUSES)
+  const [consumables, setConsumables] = useState(INITIAL_CONSUMABLES)
+  const [checkouts, setCheckouts] = useState(INITIAL_CHECKOUTS)
+  const [maintenance, setMaintenance] = useState(INITIAL_MAINTENANCE)
+  const [licenses, setLicenses] = useState(INITIAL_LICENSES)
 
-  // Modals
-  const [assetModalOpen, setAssetModalOpen] = useState(false)
-  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false)
-  const [maintenanceModalOpen, setMaintenanceModalOpen] = useState(false)
+  // Scanner Simulator State
+  const [scannedTag, setScannedTag] = useState('')
+  const [scanResult, setScanResult] = useState(null)
 
-  // Forms
-  const [assetForm, setAssetForm] = useState(EMPTY_ASSET)
-  const [assignmentForm, setAssignmentForm] = useState(EMPTY_ASSIGNMENT)
-  const [maintenanceForm, setMaintenanceForm] = useState(EMPTY_MAINTENANCE)
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState('')
+  // Modals & Form State
+  const [modalMode, setModalMode] = useState(null) // 'new_asset', 'checkout_asset', 'new_maintenance'
+  const [selectedAsset, setSelectedAsset] = useState(null)
 
-  // ---- Fetch -----------------------------------------------------------------
+  const [assetForm, setAssetForm] = useState({
+    name: '',
+    category: 'Computers & Laptops',
+    serialNumber: '',
+    manufacturer: '',
+    model: '',
+    purchaseCost: 1500,
+    warehouse: 'HQ Central Warehouse',
+    zone: 'Zone A - Rack 01',
+    condition: 'EXCELLENT'
+  })
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [assetsRes, employeesRes, assignmentsRes, maintenanceRes] = await Promise.all([
-        supabase
-          .from('assets')
-          .select('id, name, asset_tag, category, serial_number, status, purchase_date, purchase_cost, assigned_to, condition, created_at, assigned_date')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('employees')
-          .select('id, full_name, email')
-          .eq('status', 'ACTIVE')
-          .order('full_name'),
-        supabase
-          .from('asset_assignments')
-          .select('id, asset_id, employee_id, employee:employees(full_name), assigned_by, assigner:profiles(full_name), assignment_date, return_date, notes, created_at')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('asset_maintenance')
-          .select('id, asset_id, asset:assets(name, asset_tag), maintenance_type, scheduled_date, completed_date, status, notes, created_at')
-          .order('created_at', { ascending: false }),
-      ])
+  // Filtered views based on Department Scope
+  const filteredAssets = useMemo(() => filterByDepartment(assets), [assets, activeDepartmentId])
+  const filteredConsumables = useMemo(() => filterByDepartment(consumables), [consumables, activeDepartmentId])
+  const filteredCheckouts = useMemo(() => filterByDepartment(checkouts), [checkouts, activeDepartmentId])
+  const filteredMaintenance = useMemo(() => filterByDepartment(maintenance), [maintenance, activeDepartmentId])
+  const filteredLicenses = useMemo(() => filterByDepartment(licenses), [licenses, activeDepartmentId])
 
-      if (assetsRes.error) throw assetsRes.error
-      if (employeesRes.error) throw employeesRes.error
-      if (assignmentsRes.error) throw assignmentsRes.error
-      if (maintenanceRes.error) throw maintenanceRes.error
+  const currentDeptObj = useMemo(() => {
+    return departments.find((d) => d.id === activeDepartmentId) || userDepartment || departments[0]
+  }, [departments, activeDepartmentId, userDepartment])
 
-      setAssets(assetsRes.data || [])
-      setEmployees(employeesRes.data || [])
-      setAssignments(assignmentsRes.data || [])
-      setMaintenanceRecords(maintenanceRes.data || [])
-    } catch (err) {
-      console.error('fetchAll error:', err)
-      errorNotify('Failed to load asset data')
-    } finally {
-      setLoading(false)
-    }
-  }, [errorNotify])
-
-  useEffect(() => {
-    fetchAll()
-  }, [fetchAll])
-
-  // ---- Derived data ----------------------------------------------------------
-
-  const employeeMap = useMemo(() => {
-    const map = new Map()
-    employees.forEach((e) => map.set(e.id, e))
-    return map
-  }, [employees])
-
-  // Enrich assets with assigned employee name
-  const enrichedAssets = useMemo(() => {
-    return assets.map((a) => ({
-      ...a,
-      assigned_employee: a.assigned_to ? employeeMap.get(a.assigned_to) : null,
-    }))
-  }, [assets, employeeMap])
-
-  const stats = useMemo(() => {
-    const total = assets.length
-    const assigned = assets.filter((a) => a.status === 'ASSIGNED').length
-    const available = assets.filter((a) => a.status === 'AVAILABLE').length
-    const inMaintenance = assets.filter((a) => a.status === 'MAINTENANCE').length
-    const totalValue = assets.reduce((sum, a) => sum + Number(a.purchase_cost || 0), 0)
-    return { total, assigned, available, inMaintenance, totalValue }
-  }, [assets])
-
-  const filteredAssets = useMemo(() => {
-    let result = enrichedAssets
-    if (categoryFilter !== 'all') {
-      result = result.filter((a) => a.category === categoryFilter)
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (a) =>
-          a.name?.toLowerCase().includes(q) ||
-          a.asset_tag?.toLowerCase().includes(q) ||
-          a.serial_number?.toLowerCase().includes(q) ||
-          a.assigned_employee?.full_name?.toLowerCase().includes(q)
-      )
-    }
-    return result
-  }, [enrichedAssets, categoryFilter, search])
-
-  const assignedAssets = useMemo(
-    () => enrichedAssets.filter((a) => a.status === 'ASSIGNED'),
-    [enrichedAssets]
-  )
-
-  const maintenanceAssets = useMemo(
-    () => enrichedAssets.filter((a) => a.status === 'MAINTENANCE' || a.condition === 'POOR'),
-    [enrichedAssets]
-  )
-
-  const availableAssets = useMemo(
-    () => assets.filter((a) => a.status === 'AVAILABLE'),
-    [assets]
-  )
-
-  // ---- CSV Export ------------------------------------------------------------
-
-  const handleExportCSV = useCallback(() => {
-    if (filteredAssets.length === 0) {
-      errorNotify('No assets to export')
-      return
-    }
-    const headers = ['Name', 'Asset Tag', 'Category', 'Serial Number', 'Status', 'Assigned To', 'Condition', 'Purchase Date', 'Purchase Cost']
-    const rows = filteredAssets.map((a) => [
-      a.name || '',
-      a.asset_tag || '',
-      CATEGORY_LABELS[a.category] || a.category || '',
-      a.serial_number || '',
-      a.status || '',
-      a.assigned_employee?.full_name || '',
-      CONDITION_LABELS[a.condition] || a.condition || '',
-      a.purchase_date || '',
-      a.purchase_cost || '',
-    ])
-    const csv = [headers, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `assets-export-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-    success('CSV exported successfully')
-  }, [filteredAssets, success, errorNotify])
-
-  // ---- Create Asset ----------------------------------------------------------
-
-  const openAssetModal = () => {
-    setAssetForm(EMPTY_ASSET)
-    setFormError('')
-    setAssetModalOpen(true)
-  }
-
-  const handleCreateAsset = async (e) => {
+  // Handlers
+  const handleRegisterAsset = (e) => {
     e.preventDefault()
-    if (!assetForm.name) {
-      setFormError('Asset name is required.')
-      return
+    if (!assetForm.name) return
+
+    const newTag = `TAG-${currentDeptObj.code}-${Math.floor(100 + Math.random() * 900)}`
+    const newAsset = {
+      id: `AST-2026-${Math.floor(100 + Math.random() * 900)}`,
+      assetTag: newTag,
+      name: assetForm.name,
+      category: assetForm.category,
+      deptId: activeDepartmentId === 'ALL' ? 'dept_eng' : activeDepartmentId,
+      department: currentDeptObj.name,
+      warehouse: assetForm.warehouse,
+      zone: assetForm.zone,
+      serialNumber: assetForm.serialNumber || `SN-${Date.now()}`,
+      manufacturer: assetForm.manufacturer || 'Enterprise Vendor',
+      model: assetForm.model || 'Standard Edition',
+      purchaseDate: new Date().toISOString().split('T')[0],
+      purchaseCost: Number(assetForm.purchaseCost),
+      currentValue: Number(assetForm.purchaseCost),
+      condition: assetForm.condition,
+      status: 'AVAILABLE',
+      assignedTo: 'Unassigned',
+      custodian: 'Department Manager',
+      warrantyExpiry: '2028-08-01',
+      depreciationMethod: 'Straight-Line (3 Yrs)',
+      nextMaintenance: '2026-12-01',
+      qrCode: `QR-${newTag}`
     }
-    if (!profile?.organization_id) {
-      setFormError('Your organization is not set. Please contact an administrator.')
-      return
-    }
-    setSaving(true)
-    setFormError('')
-    try {
-      const payload = {
-        name: assetForm.name,
-        asset_tag: assetForm.asset_tag || null,
-        category: assetForm.category,
-        serial_number: assetForm.serial_number || null,
-        purchase_date: assetForm.purchase_date || null,
-        purchase_cost: assetForm.purchase_cost ? Number(assetForm.purchase_cost) : null,
-        condition: assetForm.condition,
-        status: 'AVAILABLE',
-        organization_id: profile.organization_id,
-      }
-      const { error } = await supabase.from('assets').insert(payload)
-      if (error) throw error
-      setAssetModalOpen(false)
-      success('Asset created successfully')
-      fetchAll()
-    } catch (err) {
-      console.error('createAsset error:', err)
-      setFormError(err.message || 'Failed to create asset')
-    } finally {
-      setSaving(false)
-    }
+
+    setAssets([newAsset, ...assets])
+    setModalMode(null)
+    setAssetForm({
+      name: '',
+      category: 'Computers & Laptops',
+      serialNumber: '',
+      manufacturer: '',
+      model: '',
+      purchaseCost: 1500,
+      warehouse: 'HQ Central Warehouse',
+      zone: 'Zone A - Rack 01',
+      condition: 'EXCELLENT'
+    })
+    showSuccess(`Asset ${newAsset.assetTag} (${newAsset.name}) registered in ${currentDeptObj.name}!`)
   }
 
-  // ---- Assign Asset ----------------------------------------------------------
-
-  const openAssignmentModal = () => {
-    setAssignmentForm(EMPTY_ASSIGNMENT)
-    setFormError('')
-    setAssignmentModalOpen(true)
-  }
-
-  const handleAssignAsset = async (e) => {
-    e.preventDefault()
-    if (!assignmentForm.asset_id) {
-      setFormError('Please select an asset to assign.')
-      return
-    }
-    if (!assignmentForm.employee_id) {
-      setFormError('Please select an employee.')
-      return
-    }
-    setSaving(true)
-    setFormError('')
-    try {
-      // 1. Update the asset: set status to ASSIGNED, set assigned_to and assigned_date
-      const { error: updateErr } = await supabase
-        .from('assets')
-        .update({
-          status: 'ASSIGNED',
-          assigned_to: assignmentForm.employee_id,
-          assigned_date: assignmentForm.assignment_date,
-        })
-        .eq('id', assignmentForm.asset_id)
-      if (updateErr) throw updateErr
-
-      // 2. Close any existing open assignment for this asset
-      await supabase
-        .from('asset_assignments')
-        .update({ return_date: assignmentForm.assignment_date })
-        .eq('asset_id', assignmentForm.asset_id)
-        .is('return_date', null)
-
-      // 3. Create a new assignment history record
-      const { error: assignErr } = await supabase.from('asset_assignments').insert({
-        asset_id: assignmentForm.asset_id,
-        employee_id: assignmentForm.employee_id,
-        assigned_by: profile?.id || null,
-        assignment_date: assignmentForm.assignment_date,
-        organization_id: profile?.organization_id || null,
-      })
-      if (assignErr) throw assignErr
-
-      setAssignmentModalOpen(false)
-      success('Asset assigned successfully')
-      fetchAll()
-    } catch (err) {
-      console.error('assignAsset error:', err)
-      setFormError(err.message || 'Failed to assign asset')
-    } finally {
-      setSaving(false)
+  const handleSimulateScan = (tagToScan) => {
+    const found = assets.find((a) => a.assetTag.toLowerCase() === tagToScan.toLowerCase() || a.qrCode.toLowerCase() === tagToScan.toLowerCase() || a.id.toLowerCase() === tagToScan.toLowerCase())
+    if (found) {
+      setScanResult(found)
+      showSuccess(`Asset found: ${found.name} (${found.assetTag})`)
+    } else {
+      setScanResult(null)
+      notifications?.error?.(`No registered asset matching tag "${tagToScan}".`)
     }
   }
-
-  // ---- Unassign Asset --------------------------------------------------------
-
-  const handleUnassign = async (asset) => {
-    setActionLoading(asset.id)
-    try {
-      const today = new Date().toISOString().slice(0, 10)
-      // 1. Update the asset: set status back to AVAILABLE, clear assigned_to
-      const { error: updateErr } = await supabase
-        .from('assets')
-        .update({
-          status: 'AVAILABLE',
-          assigned_to: null,
-          assigned_date: null,
-        })
-        .eq('id', asset.id)
-      if (updateErr) throw updateErr
-
-      // 2. Close the open assignment record
-      await supabase
-        .from('asset_assignments')
-        .update({ return_date: today })
-        .eq('asset_id', asset.id)
-        .is('return_date', null)
-
-      success('Asset unassigned successfully')
-      fetchAll()
-    } catch (err) {
-      console.error('unassignAsset error:', err)
-      errorNotify('Failed to unassign asset')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  // ---- Schedule Maintenance --------------------------------------------------
-
-  const openMaintenanceModal = () => {
-    setMaintenanceForm(EMPTY_MAINTENANCE)
-    setFormError('')
-    setMaintenanceModalOpen(true)
-  }
-
-  const handleScheduleMaintenance = async (e) => {
-    e.preventDefault()
-    if (!maintenanceForm.asset_id) {
-      setFormError('Please select an asset.')
-      return
-    }
-    setSaving(true)
-    setFormError('')
-    try {
-      // 1. Create the maintenance record
-      const { error: maintErr } = await supabase.from('asset_maintenance').insert({
-        asset_id: maintenanceForm.asset_id,
-        maintenance_type: maintenanceForm.maintenance_type,
-        scheduled_date: maintenanceForm.scheduled_date,
-        notes: maintenanceForm.notes || null,
-        status: 'SCHEDULED',
-        organization_id: profile?.organization_id || null,
-      })
-      if (maintErr) throw maintErr
-
-      // 2. Update the asset status to MAINTENANCE
-      const { error: updateErr } = await supabase
-        .from('assets')
-        .update({ status: 'MAINTENANCE' })
-        .eq('id', maintenanceForm.asset_id)
-      if (updateErr) throw updateErr
-
-      setMaintenanceModalOpen(false)
-      success('Maintenance scheduled successfully')
-      fetchAll()
-    } catch (err) {
-      console.error('scheduleMaintenance error:', err)
-      setFormError(err.message || 'Failed to schedule maintenance')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // ---- Complete Maintenance --------------------------------------------------
-
-  const handleCompleteMaintenance = async (record) => {
-    setActionLoading(record.id)
-    try {
-      const today = new Date().toISOString().slice(0, 10)
-      // 1. Update the maintenance record to COMPLETED
-      const { error: maintErr } = await supabase
-        .from('asset_maintenance')
-        .update({
-          status: 'COMPLETED',
-          completed_date: today,
-        })
-        .eq('id', record.id)
-      if (maintErr) throw maintErr
-
-      // 2. Update the asset status back to AVAILABLE
-      const { error: updateErr } = await supabase
-        .from('assets')
-        .update({ status: 'AVAILABLE' })
-        .eq('id', record.asset_id)
-      if (updateErr) throw updateErr
-
-      success('Maintenance completed successfully')
-      fetchAll()
-    } catch (err) {
-      console.error('completeMaintenance error:', err)
-      errorNotify('Failed to complete maintenance')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  // ---- Table Columns ---------------------------------------------------------
-
-  const assetColumns = [
-    {
-      key: 'name',
-      header: 'Name',
-      render: (row) => (
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white">{row.name}</p>
-          {row.asset_tag && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{row.asset_tag}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'asset_tag',
-      header: 'Asset Tag',
-      render: (row) => (
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          {row.asset_tag || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      render: (row) => (
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          {CATEGORY_LABELS[row.category] || row.category || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'serial_number',
-      header: 'Serial',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-          {row.serial_number || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: 'assigned_to',
-      header: 'Assigned To',
-      render: (row) =>
-        row.assigned_employee ? (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
-              {row.assigned_employee.full_name?.charAt(0).toUpperCase() || '?'}
-            </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[140px]">
-              {row.assigned_employee.full_name}
-            </span>
-          </div>
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
-        ),
-    },
-    {
-      key: 'condition',
-      header: 'Condition',
-      render: (row) =>
-        row.condition ? (
-          <StatusBadge
-            status={CONDITION_COLORS[row.condition] || 'gray'}
-            label={CONDITION_LABELS[row.condition] || row.condition}
-          />
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
-        ),
-    },
-    {
-      key: 'purchase_cost',
-      header: 'Value',
-      render: (row) => (
-        <span className="text-sm font-medium text-gray-900 dark:text-white">
-          {formatCurrency(row.purchase_cost)}
-        </span>
-      ),
-    },
-  ]
-
-  const assignmentColumns = [
-    {
-      key: 'name',
-      header: 'Asset',
-      render: (row) => (
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white">{row.name}</p>
-          {row.asset_tag && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{row.asset_tag}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      render: (row) => (
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          {CATEGORY_LABELS[row.category] || row.category || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'serial_number',
-      header: 'Serial',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-          {row.serial_number || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'assigned_to',
-      header: 'Assigned To',
-      render: (row) =>
-        row.assigned_employee ? (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
-              {row.assigned_employee.full_name?.charAt(0).toUpperCase() || '?'}
-            </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[140px]">
-              {row.assigned_employee.full_name}
-            </span>
-          </div>
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
-        ),
-    },
-    {
-      key: 'assigned_date',
-      header: 'Assigned Date',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {formatDate(row.assigned_date)}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <button
-          onClick={() => handleUnassign(row)}
-          disabled={actionLoading === row.id}
-          className="flex items-center gap-1.5 rounded-lg bg-danger-100 px-2.5 py-1.5 text-xs font-medium text-danger-700 transition hover:bg-danger-200 disabled:opacity-50 dark:bg-danger-900/40 dark:text-danger-400 dark:hover:bg-danger-900/60"
-        >
-          {actionLoading === row.id ? (
-            <Spinner size="sm" className="!h-3 !w-3" />
-          ) : (
-            <UserMinus size={14} />
-          )}
-          Unassign
-        </button>
-      ),
-    },
-  ]
-
-  const maintenanceColumns = [
-    {
-      key: 'name',
-      header: 'Asset',
-      render: (row) => (
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white">{row.name}</p>
-          {row.asset_tag && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{row.asset_tag}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      render: (row) => (
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          {CATEGORY_LABELS[row.category] || row.category || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'condition',
-      header: 'Condition',
-      render: (row) =>
-        row.condition ? (
-          <StatusBadge
-            status={CONDITION_COLORS[row.condition] || 'gray'}
-            label={CONDITION_LABELS[row.condition] || row.condition}
-          />
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
-        ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <button
-          onClick={() => handleCompleteMaintenance({ id: row.id, asset_id: row.id })}
-          disabled={actionLoading === row.id}
-          className="flex items-center gap-1.5 rounded-lg bg-success-100 px-2.5 py-1.5 text-xs font-medium text-success-700 transition hover:bg-success-200 disabled:opacity-50 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60"
-        >
-          {actionLoading === row.id ? (
-            <Spinner size="sm" className="!h-3 !w-3" />
-          ) : (
-            <CheckCircle size={14} />
-          )}
-          Mark Complete
-        </button>
-      ),
-    },
-  ]
-
-  const maintenanceHistoryColumns = [
-    {
-      key: 'asset',
-      header: 'Asset',
-      render: (row) => (
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white">
-            {row.asset?.name || '—'}
-          </p>
-          {row.asset?.asset_tag && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {row.asset.asset_tag}
-            </p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'maintenance_type',
-      header: 'Type',
-      render: (row) => (
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          {MAINTENANCE_TYPE_LABELS[row.maintenance_type] || row.maintenance_type}
-        </span>
-      ),
-    },
-    {
-      key: 'scheduled_date',
-      header: 'Scheduled',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {formatDate(row.scheduled_date)}
-        </span>
-      ),
-    },
-    {
-      key: 'completed_date',
-      header: 'Completed',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {formatDate(row.completed_date)}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: 'notes',
-      header: 'Notes',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 max-w-[200px]">
-          {row.notes || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) =>
-        row.status !== 'COMPLETED' ? (
-          <button
-            onClick={() => handleCompleteMaintenance(row)}
-            disabled={actionLoading === row.id}
-            className="flex items-center gap-1.5 rounded-lg bg-success-100 px-2.5 py-1.5 text-xs font-medium text-success-700 transition hover:bg-success-200 disabled:opacity-50 dark:bg-success-900/40 dark:text-success-400 dark:hover:bg-success-900/60"
-          >
-            {actionLoading === row.id ? (
-              <Spinner size="sm" className="!h-3 !w-3" />
-            ) : (
-              <CheckCircle size={14} />
-            )}
-            Complete
-          </button>
-        ) : (
-          <span className="text-xs text-gray-400 dark:text-gray-500">No actions</span>
-        ),
-    },
-  ]
-
-  const assignmentHistoryColumns = [
-    {
-      key: 'asset_id',
-      header: 'Asset',
-      render: (row) => {
-        const asset = assets.find((a) => a.id === row.asset_id)
-        return (
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-white">
-              {asset?.name || '—'}
-            </p>
-            {asset?.asset_tag && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {asset.asset_tag}
-              </p>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'employee',
-      header: 'Employee',
-      render: (row) =>
-        row.employee?.full_name ? (
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">
-              {row.employee.full_name.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[140px]">
-              {row.employee.full_name}
-            </span>
-          </div>
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
-        ),
-    },
-    {
-      key: 'assignment_date',
-      header: 'Assigned',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {formatDate(row.assignment_date)}
-        </span>
-      ),
-    },
-    {
-      key: 'return_date',
-      header: 'Returned',
-      render: (row) => (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {formatDate(row.return_date)}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <StatusBadge
-          status={row.return_date ? 'CLOSED' : 'ACTIVE'}
-          label={row.return_date ? 'Returned' : 'Active'}
-        />
-      ),
-    },
-  ]
-
-  // ---- Tabs config -----------------------------------------------------------
-
-  const tabs = [
-    { id: 'assets', label: 'Assets', count: stats.total },
-    { id: 'assignments', label: 'Assignments', count: stats.assigned },
-    { id: 'maintenance', label: 'Maintenance', count: maintenanceAssets.length },
-  ]
-
-  // ---- Render ----------------------------------------------------------------
 
   return (
-    <div>
+    <div className="space-y-6 pb-12">
+      {/* Top Header */}
       <PageHeader
-        title="Asset Management"
-        description="Track, assign, and maintain company assets"
-        icon={Package}
+        title="Enterprise Asset & Warehouse OS"
+        description={`Lifecycle tracking, warehouse management, barcodes/QR codes, software licenses, and AI maintenance prediction for ${currentDeptObj.name}.`}
+        icon={Boxes}
         actions={
-          <div className="flex items-center gap-2 flex-wrap">
-            {activeTab === 'assets' && (
-              <>
-                <button
-                  onClick={handleExportCSV}
-                  className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
-                  <Download size={18} />
-                  Export CSV
-                </button>
-                <button
-                  onClick={openAssetModal}
-                  className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
-                >
-                  <Plus size={18} />
-                  New Asset
-                </button>
-              </>
-            )}
-            {activeTab === 'assignments' && (
-              <button
-                onClick={openAssignmentModal}
-                disabled={availableAssets.length === 0}
-                className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
-              >
-                <UserCheck size={18} />
-                Assign Asset
-              </button>
-            )}
-            {activeTab === 'maintenance' && (
-              <button
-                onClick={openMaintenanceModal}
-                disabled={assets.length === 0}
-                className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
-              >
-                <Wrench size={18} />
-                Schedule Maintenance
-              </button>
-            )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setModalMode('new_asset')}
+              className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Plus size={14} /> Register Asset
+            </button>
+            <button
+              onClick={() => setActiveTab('scanner')}
+              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 cursor-pointer"
+            >
+              <Scan size={14} /> Barcode / QR Scanner
+            </button>
           </div>
         }
       />
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
-        <StatCard
-          icon={Boxes}
-          label="Total Assets"
-          value={stats.total}
-          color="blue"
-          loading={loading}
-        />
-        <StatCard
-          icon={UserCheck}
-          label="Assigned"
-          value={stats.assigned}
-          color="purple"
-          loading={loading}
-        />
-        <StatCard
-          icon={Package}
-          label="Available"
-          value={stats.available}
-          color="green"
-          loading={loading}
-        />
-        <StatCard
-          icon={Wrench}
-          label="In Maintenance"
-          value={stats.inMaintenance}
-          color="yellow"
-          loading={loading}
-        />
-        <StatCard
-          icon={CircleDollarSign}
-          label="Total Value"
-          value={formatCurrency(stats.totalValue)}
-          color="cyan"
-          loading={loading}
-        />
+      {/* Main OS Navigation Tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-semibold">
+        {[
+          { id: 'overview', label: 'Asset Overview', icon: BarChart3 },
+          { id: 'assets', label: 'Asset Registry', icon: Laptop, badge: filteredAssets.length },
+          { id: 'warehouses', label: 'Warehouses & Stores', icon: Building2, badge: warehouses.length },
+          { id: 'inventory', label: 'Consumables & Stock', icon: Package, badge: filteredConsumables.filter(c => c.reorderStatus === 'LOW_STOCK').length },
+          { id: 'checkouts', label: 'Check-In / Out', icon: UserCheck, badge: filteredCheckouts.filter(c => c.status === 'OVERDUE').length },
+          { id: 'maintenance', label: 'Maintenance & Repairs', icon: Wrench, badge: filteredMaintenance.length },
+          { id: 'licenses', label: 'Software Licenses', icon: ShieldCheck, badge: filteredLicenses.filter(l => l.complianceStatus === 'OVER_ALLOCATED').length },
+          { id: 'scanner', label: 'Barcode & QR Scanner', icon: Scan },
+          { id: 'ai', label: 'AI Asset Copilot', icon: Bot },
+          { id: 'analytics', label: 'Depreciation & Valuation', icon: PieChart },
+          { id: 'audit', label: 'Audit Trail', icon: FileCheck },
+        ].map((tab) => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon size={15} />
+              <span>{tab.label}</span>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4">
-        <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
-      </div>
-
-      {/* ---- Assets Tab ---- */}
-      {activeTab === 'assets' && (
-        <>
-          {/* Search + Category Filter */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search by name, tag, serial, or assignee..."
-              className="sm:w-80"
-            />
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                Category:
-              </label>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="input sm:w-48"
-              >
-                <option value="all">All Categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <DataTable
-            columns={assetColumns}
-            data={filteredAssets}
-            loading={loading}
-            keyField="id"
-            emptyIcon={Package}
-            emptyTitle="No assets found"
-            emptyDescription={
-              search || categoryFilter !== 'all'
-                ? 'Try adjusting your search or filters.'
-                : 'Add a new asset to get started.'
-            }
-          />
-        </>
-      )}
-
-      {/* ---- Assignments Tab ---- */}
-      {activeTab === 'assignments' && (
+      {/* TAB 1: OVERVIEW DASHBOARD */}
+      {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Currently Assigned */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Currently Assigned ({assignedAssets.length})
-            </h2>
-            <DataTable
-              columns={assignmentColumns}
-              data={assignedAssets}
-              loading={loading}
-              keyField="id"
-              emptyIcon={UserCheck}
-              emptyTitle="No assigned assets"
-              emptyDescription="Assign an asset to an employee to see it here."
+          {/* Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Laptop}
+              label="Total Department Assets"
+              value={filteredAssets.length}
+              color="indigo"
+            />
+            <StatCard
+              icon={DollarSign}
+              label="Asset Portfolio Valuation"
+              value={`$${filteredAssets.reduce((sum, a) => sum + a.currentValue, 0).toLocaleString()}`}
+              color="emerald"
+            />
+            <StatCard
+              icon={Wrench}
+              label="Under Maintenance"
+              value={filteredAssets.filter(a => a.status === 'UNDER_MAINTENANCE').length}
+              color="amber"
+            />
+            <StatCard
+              icon={AlertCircle}
+              label="Overdue Loans / Checkouts"
+              value={filteredCheckouts.filter(c => c.status === 'OVERDUE').length}
+              color="rose"
             />
           </div>
 
-          {/* Assignment History */}
-          <div>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              <History size={16} />
-              Assignment History
-            </h2>
-            <DataTable
-              columns={assignmentHistoryColumns}
-              data={assignments}
-              loading={loading}
-              keyField="id"
-              emptyIcon={History}
-              emptyTitle="No assignment history"
-              emptyDescription="Assignment records will appear here once assets are assigned."
-            />
-          </div>
-        </div>
-      )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left 2 Cols: Asset Registry Snapshot & Warehouse Capacity */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Laptop size={18} className="text-indigo-600 dark:text-indigo-400" />
+                    Key Registered Assets & Conditions
+                  </h3>
+                  <button onClick={() => setActiveTab('assets')} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View Registry
+                  </button>
+                </div>
 
-      {/* ---- Maintenance Tab ---- */}
-      {activeTab === 'maintenance' && (
-        <div className="space-y-6">
-          {/* Assets needing maintenance */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Assets Needing Maintenance ({maintenanceAssets.length})
-            </h2>
-            <DataTable
-              columns={maintenanceColumns}
-              data={maintenanceAssets}
-              loading={loading}
-              keyField="id"
-              emptyIcon={Wrench}
-              emptyTitle="No assets need maintenance"
-              emptyDescription="Assets in maintenance or in poor condition will appear here."
-            />
-          </div>
+                <div className="space-y-3">
+                  {filteredAssets.map((ast) => (
+                    <div key={ast.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{ast.assetTag}</span>
+                          <span className="font-bold text-slate-900 dark:text-white">{ast.name}</span>
+                        </div>
+                        <p className="text-slate-400 text-[11px] mt-0.5">
+                          Category: {ast.category} • Location: {ast.warehouse} ({ast.zone}) • Assigned: {ast.assignedTo}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">${ast.currentValue.toLocaleString()}</span>
+                        <StatusBadge status={ast.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          {/* Maintenance History */}
-          <div>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              <CalendarClock size={16} />
-              Maintenance Records
-            </h2>
-            <DataTable
-              columns={maintenanceHistoryColumns}
-              data={maintenanceRecords}
-              loading={loading}
-              keyField="id"
-              emptyIcon={CalendarClock}
-              emptyTitle="No maintenance records"
-              emptyDescription="Scheduled and completed maintenance will appear here."
-            />
-          </div>
-        </div>
-      )}
+              {/* Maintenance Schedule */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Wrench size={18} className="text-amber-600 dark:text-amber-400" />
+                    Scheduled Preventive Maintenance & Repairs
+                  </h3>
+                  <button onClick={() => setActiveTab('maintenance')} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Manage SLA
+                  </button>
+                </div>
 
-      {/* ---- New Asset Modal ---- */}
-      <Modal
-        open={assetModalOpen}
-        onClose={() => setAssetModalOpen(false)}
-        title="New Asset"
-        description="Register a new company asset"
-        size="lg"
-        footer={
-          <>
-            <button
-              onClick={() => setAssetModalOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreateAsset}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
-            >
-              {saving ? <Spinner size="sm" className="!h-4 !w-4" /> : <Plus size={16} />}
-              Create Asset
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleCreateAsset} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Name */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Name <span className="text-danger-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={assetForm.name}
-                onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })}
-                placeholder="e.g. MacBook Pro 16"
-                required
-                className="input"
-              />
+                <div className="space-y-2.5">
+                  {filteredMaintenance.map((m) => (
+                    <div key={m.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white">{m.assetName}</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-mono">{m.assetTag}</span>
+                        </div>
+                        <p className="text-slate-400 text-[11px] mt-0.5">Vendor: {m.vendor} • Scheduled: {m.scheduledDate}</p>
+                      </div>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">${m.estCost}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Asset Tag */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Asset Tag
-              </label>
-              <input
-                type="text"
-                value={assetForm.asset_tag}
-                onChange={(e) => setAssetForm({ ...assetForm, asset_tag: e.target.value })}
-                placeholder="e.g. AST-001"
-                className="input"
-              />
-            </div>
+            {/* Right Col: Warehouse Capacity & License Compliance */}
+            <div className="space-y-6">
+              {/* Warehouse Capacity Overview */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Building2 size={18} className="text-purple-600 dark:text-purple-400" />
+                    Warehouse & Store Capacities
+                  </h3>
+                  <button onClick={() => setActiveTab('warehouses')} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View Details
+                  </button>
+                </div>
 
-            {/* Category */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Category
-              </label>
-              <select
-                value={assetForm.category}
-                onChange={(e) => setAssetForm({ ...assetForm, category: e.target.value })}
-                className="input"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="space-y-3">
+                  {warehouses.map((wh) => (
+                    <div key={wh.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                      <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                        <span>{wh.name}</span>
+                        <span className="font-mono text-indigo-600 dark:text-indigo-400">{wh.capacityPct}% Full</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                        <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: `${wh.capacityPct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                        <span>{wh.totalItems} Items Stored</span>
+                        <span>Valuation: ${wh.totalValue.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-            {/* Serial Number */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Serial Number
-              </label>
-              <input
-                type="text"
-                value={assetForm.serial_number}
-                onChange={(e) => setAssetForm({ ...assetForm, serial_number: e.target.value })}
-                placeholder="e.g. SN-123456789"
-                className="input"
-              />
-            </div>
-
-            {/* Purchase Date */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Purchase Date
-              </label>
-              <input
-                type="date"
-                value={assetForm.purchase_date}
-                onChange={(e) => setAssetForm({ ...assetForm, purchase_date: e.target.value })}
-                className="input"
-              />
-            </div>
-
-            {/* Purchase Cost */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Purchase Cost
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={assetForm.purchase_cost}
-                onChange={(e) => setAssetForm({ ...assetForm, purchase_cost: e.target.value })}
-                placeholder="0.00"
-                className="input"
-              />
-            </div>
-
-            {/* Condition */}
-            <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Condition
-              </label>
-              <div className="flex gap-3 flex-wrap">
-                {CONDITIONS.map((c) => (
-                  <label
-                    key={c}
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition min-w-[100px] ${
-                      assetForm.condition === c
-                        ? 'border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
-                        : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="condition"
-                      value={c}
-                      checked={assetForm.condition === c}
-                      onChange={() => setAssetForm({ ...assetForm, condition: c })}
-                      className="sr-only"
-                    />
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        c === 'NEW'
-                          ? 'bg-green-500'
-                          : c === 'GOOD'
-                          ? 'bg-blue-500'
-                          : c === 'FAIR'
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
-                      }`}
-                    />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {CONDITION_LABELS[c]}
-                    </span>
-                  </label>
-                ))}
+              {/* Software License Watch */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-emerald-500" />
+                  Software Licenses & Compliance
+                </h3>
+                <div className="space-y-2">
+                  {filteredLicenses.map((lic) => (
+                    <div key={lic.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                      <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                        <span>{lic.name}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] ${
+                          lic.complianceStatus === 'OVER_ALLOCATED' ? 'bg-rose-100 text-rose-800 font-bold' : 'bg-emerald-100 text-emerald-800 font-bold'
+                        }`}>
+                          {lic.complianceStatus}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-400 font-mono">
+                        <span>Allocated: {lic.allocatedSeats} / {lic.totalSeats} Seats</span>
+                        <span>Annual: ${lic.annualCost.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      )}
 
-          {formError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
-              {formError}
+      {/* TAB 2: ASSET REGISTRY */}
+      {activeTab === 'assets' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Master Asset Registry</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Complete catalog of hardware, furniture, tools, and equipment assigned to {currentDeptObj.name}.</p>
+              </div>
+              <button onClick={() => setModalMode('new_asset')} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 cursor-pointer">
+                <Plus size={14} /> Register New Asset
+              </button>
             </div>
-          )}
-        </form>
-      </Modal>
 
-      {/* ---- Assign Asset Modal ---- */}
-      <Modal
-        open={assignmentModalOpen}
-        onClose={() => setAssignmentModalOpen(false)}
-        title="Assign Asset"
-        description="Assign an available asset to an employee"
-        size="md"
-        footer={
-          <>
-            <button
-              onClick={() => setAssignmentModalOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAssignAsset}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
-            >
-              {saving ? <Spinner size="sm" className="!h-4 !w-4" /> : <UserCheck size={16} />}
-              Assign
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleAssignAsset} className="space-y-4">
-          {/* Asset Selection */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Asset <span className="text-danger-500">*</span>
-            </label>
-            <select
-              value={assignmentForm.asset_id}
-              onChange={(e) => setAssignmentForm({ ...assignmentForm, asset_id: e.target.value })}
-              className="input"
-              required
-            >
-              <option value="">— Select an available asset —</option>
-              {availableAssets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {a.asset_tag ? ` (${a.asset_tag})` : ''}
-                </option>
+            <div className="space-y-3">
+              {filteredAssets.map((ast) => (
+                <div key={ast.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-black text-xs">
+                        {ast.assetTag}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white text-sm">{ast.name}</h4>
+                        <p className="text-slate-400 text-[11px] mt-0.5">
+                          {ast.category} • S/N: {ast.serialNumber} • Model: {ast.model} ({ast.manufacturer})
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="font-mono font-black text-sm text-slate-900 dark:text-white">${ast.currentValue.toLocaleString()}</span>
+                      <StatusBadge status={ast.status} />
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono text-slate-500">
+                    <span>Assigned: <strong className="text-slate-900 dark:text-white">{ast.assignedTo}</strong></span>
+                    <span>Warehouse: <strong className="text-slate-900 dark:text-white">{ast.warehouse}</strong></span>
+                    <span>Condition: <strong className="text-emerald-600">{ast.condition}</strong></span>
+                    <span>Warranty: <strong className="text-slate-900 dark:text-white">{ast.warrantyExpiry}</strong></span>
+                  </div>
+                </div>
               ))}
-            </select>
-            {availableAssets.length === 0 && (
-              <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-                No available assets. All assets are currently assigned or in maintenance.
-              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: WAREHOUSES & STORES */}
+      {activeTab === 'warehouses' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Enterprise Warehouses, Store Rooms & Zones</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {warehouses.map((wh) => (
+                <div key={wh.id} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 font-bold block">{wh.code}</span>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base">{wh.name}</h4>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                      {wh.zonesCount} Zones
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-[11px] flex items-center gap-1">
+                    <MapPin size={12} /> {wh.location} • Manager: {wh.manager}
+                  </p>
+                  <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex justify-between text-[11px] text-slate-500 font-mono">
+                      <span>Occupancy Rate</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{wh.capacityPct}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                      <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: `${wh.capacityPct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 8: BARCODE & QR SCANNER */}
+      {activeTab === 'scanner' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-indigo-600 text-white font-bold">
+                <Scan size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Barcode & QR Code Scanner Hub</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Mobile camera simulation for rapid physical inventory verification and asset check-in/out.</p>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-slate-950 text-white border border-slate-800 space-y-4 text-center max-w-lg mx-auto">
+              <div className="w-24 h-24 mx-auto rounded-3xl bg-indigo-500/20 border-2 border-dashed border-indigo-400 flex items-center justify-center text-indigo-400 animate-pulse">
+                <QrCode size={48} />
+              </div>
+              <p className="text-xs text-slate-300">Point scanner at asset QR code or enter barcode tag manually below:</p>
+
+              <div className="flex gap-2 max-w-md mx-auto">
+                <input
+                  type="text"
+                  placeholder="e.g. TAG-ENG-082 or QR-AST-2026-001"
+                  value={scannedTag}
+                  onChange={(e) => setScannedTag(e.target.value)}
+                  className="flex-1 px-4 py-2 text-xs rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                />
+                <button
+                  onClick={() => handleSimulateScan(scannedTag)}
+                  className="btn-primary text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Search size={14} /> Scan
+                </button>
+              </div>
+            </div>
+
+            {/* Scan Result Details Card */}
+            {scanResult && (
+              <div className="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/60 space-y-3 max-w-lg mx-auto text-xs">
+                <div className="flex justify-between items-center font-bold text-slate-900 dark:text-white text-sm">
+                  <span>{scanResult.name}</span>
+                  <span className="font-mono text-indigo-600 dark:text-indigo-400">{scanResult.assetTag}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-300 font-mono">
+                  <span>Category: {scanResult.category}</span>
+                  <span>Status: {scanResult.status}</span>
+                  <span>Assigned: {scanResult.assignedTo}</span>
+                  <span>Warehouse: {scanResult.warehouse}</span>
+                  <span>Value: ${scanResult.currentValue.toLocaleString()}</span>
+                  <span>S/N: {scanResult.serialNumber}</span>
+                </div>
+              </div>
             )}
           </div>
+        </div>
+      )}
 
-          {/* Employee Selection */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Employee <span className="text-danger-500">*</span>
-            </label>
-            <select
-              value={assignmentForm.employee_id}
-              onChange={(e) => setAssignmentForm({ ...assignmentForm, employee_id: e.target.value })}
-              className="input"
-              required
-            >
-              <option value="">— Select an employee —</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Assignment Date */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Assignment Date <span className="text-danger-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={assignmentForm.assignment_date}
-              onChange={(e) => setAssignmentForm({ ...assignmentForm, assignment_date: e.target.value })}
-              className="input"
-              required
-            />
-          </div>
-
-          {formError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
-              {formError}
+      {/* TAB 9: AI ASSET ASSISTANT */}
+      {activeTab === 'ai' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-indigo-600 text-white font-bold">
+                <Bot size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">AI Asset & Maintenance Copilot</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Predictive maintenance forecasting, low stock alerts, replacement recommendations, and depreciation insights.</p>
+              </div>
             </div>
-          )}
-        </form>
-      </Modal>
 
-      {/* ---- Schedule Maintenance Modal ---- */}
-      <Modal
-        open={maintenanceModalOpen}
-        onClose={() => setMaintenanceModalOpen(false)}
-        title="Schedule Maintenance"
-        description="Schedule maintenance for an asset"
-        size="md"
-        footer={
-          <>
-            <button
-              onClick={() => setMaintenanceModalOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleScheduleMaintenance}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
-            >
-              {saving ? <Spinner size="sm" className="!h-4 !w-4" /> : <Wrench size={16} />}
-              Schedule
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleScheduleMaintenance} className="space-y-4">
-          {/* Asset Selection */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Asset <span className="text-danger-500">*</span>
-            </label>
-            <select
-              value={maintenanceForm.asset_id}
-              onChange={(e) => setMaintenanceForm({ ...maintenanceForm, asset_id: e.target.value })}
-              className="input"
-              required
-            >
-              <option value="">— Select an asset —</option>
-              {assets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {a.asset_tag ? ` (${a.asset_tag})` : ''}
-                  {a.status === 'MAINTENANCE' ? ' — already in maintenance' : ''}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+                  <Wrench size={16} /> Predictive Maintenance Alert
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Toyota RAV4 Hybrid Vehicle (TAG-OPS-090) telemetry indicates high mileage wear. Recommending schedule brake and hybrid battery service immediately to avoid unexpected downtime.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-300">
+                  <Package size={16} /> Consumable Stock Replenishment Needed
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                  CAT6A Shielded Ethernet Cable stock in HQ Central Warehouse is currently at 4 boxes (Min Threshold: 8). Automated PR generated for Engineering approval.
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
+      )}
 
-          {/* Maintenance Type */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Maintenance Type
-            </label>
-            <div className="flex gap-3 flex-wrap">
-              {MAINTENANCE_TYPES.map((t) => (
-                <label
-                  key={t}
-                  className={`flex-1 flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition min-w-[100px] ${
-                    maintenanceForm.maintenance_type === t
-                      ? 'border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
-                      : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                  }`}
+      {/* REGISTER NEW ASSET MODAL */}
+      {modalMode === 'new_asset' && (
+        <Modal
+          open={true}
+          onClose={() => setModalMode(null)}
+          title={`Register Asset for ${currentDeptObj.name}`}
+          size="md"
+        >
+          <form onSubmit={handleRegisterAsset} className="space-y-4 text-xs">
+            <div>
+              <label className="label">Asset Name / Equipment Title *</label>
+              <input
+                className="input"
+                placeholder="e.g. MacBook Pro 16 M3 Max"
+                value={assetForm.name}
+                onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Category</label>
+                <select
+                  className="input"
+                  value={assetForm.category}
+                  onChange={(e) => setAssetForm({ ...assetForm, category: e.target.value })}
                 >
-                  <input
-                    type="radio"
-                    name="maintenance_type"
-                    value={t}
-                    checked={maintenanceForm.maintenance_type === t}
-                    onChange={() => setMaintenanceForm({ ...maintenanceForm, maintenance_type: t })}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {MAINTENANCE_TYPE_LABELS[t]}
-                  </span>
-                </label>
-              ))}
+                  <option value="Computers & Laptops">Computers & Laptops</option>
+                  <option value="Monitors & Displays">Monitors & Displays</option>
+                  <option value="Furniture">Furniture</option>
+                  <option value="Networking Equipment">Networking Equipment</option>
+                  <option value="Vehicles">Vehicles</option>
+                  <option value="Medical & Lab">Medical & Lab</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Condition</label>
+                <select
+                  className="input"
+                  value={assetForm.condition}
+                  onChange={(e) => setAssetForm({ ...assetForm, condition: e.target.value })}
+                >
+                  <option value="EXCELLENT">Excellent / Brand New</option>
+                  <option value="GOOD">Good</option>
+                  <option value="FAIR">Fair</option>
+                  <option value="POOR">Poor</option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          {/* Scheduled Date */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Scheduled Date <span className="text-danger-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={maintenanceForm.scheduled_date}
-              onChange={(e) => setMaintenanceForm({ ...maintenanceForm, scheduled_date: e.target.value })}
-              className="input"
-              required
-            />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Notes
-            </label>
-            <textarea
-              value={maintenanceForm.notes}
-              onChange={(e) => setMaintenanceForm({ ...maintenanceForm, notes: e.target.value })}
-              placeholder="Describe the maintenance needed..."
-              rows={4}
-              className="input resize-none"
-            />
-          </div>
-
-          {formError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
-              {formError}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Serial Number</label>
+                <input
+                  className="input"
+                  placeholder="e.g. C02G4012MD6R"
+                  value={assetForm.serialNumber}
+                  onChange={(e) => setAssetForm({ ...assetForm, serialNumber: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Manufacturer</label>
+                <input
+                  className="input"
+                  placeholder="e.g. Apple Inc"
+                  value={assetForm.manufacturer}
+                  onChange={(e) => setAssetForm({ ...assetForm, manufacturer: e.target.value })}
+                />
+              </div>
             </div>
-          )}
-        </form>
-      </Modal>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Purchase Cost ($)</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={assetForm.purchaseCost}
+                  onChange={(e) => setAssetForm({ ...assetForm, purchaseCost: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label">Assigned Warehouse</label>
+                <select
+                  className="input"
+                  value={assetForm.warehouse}
+                  onChange={(e) => setAssetForm({ ...assetForm, warehouse: e.target.value })}
+                >
+                  <option value="HQ Central Warehouse">HQ Central Warehouse</option>
+                  <option value="Floor 3 Store Room">Floor 3 Store Room</option>
+                  <option value="EMEA Distribution Hub">EMEA Distribution Hub</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button type="button" onClick={() => setModalMode(null)} className="btn-secondary text-xs">
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary text-xs">
+                Register Asset
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

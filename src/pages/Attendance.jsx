@@ -7,9 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AttendanceLogModal from "@/components/attendance/AttendanceLogModal";
 import AttendanceDashboard from "@/components/attendance/AttendanceDashboard";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonTable } from "@/components/ui/SkeletonLoaders";
+import { useToast } from "@/contexts/ToastContext";
 import {
   Plus, Search, Calendar, LogIn, LogOut, Clock, AlertCircle, Download,
-  Smartphone, Cpu, Sliders, CheckCircle2, ShieldCheck, MapPin
+  Smartphone, Cpu, Sliders, CheckCircle2, ShieldCheck, MapPin, RefreshCw
 } from "lucide-react";
 
 const STATUS_COLORS = {
@@ -43,6 +47,7 @@ function calcHours(checkIn, checkOut) {
 }
 
 export default function Attendance() {
+  const toast = useToast();
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,9 +117,10 @@ export default function Attendance() {
           work_location: "Office"
         });
       }
+      toast.success("Attendance updated successfully.");
       load();
     } catch {
-      alert("Failed to record attendance. Please try again.");
+      toast.error("Failed to record attendance. Please try again.");
     }
   };
 
@@ -125,24 +131,38 @@ export default function Attendance() {
     try {
       if (editing) {
         await base44.entities.AttendanceRecord.update(editing.id, form);
+        toast.success("Attendance record updated.");
       } else {
         await base44.entities.AttendanceRecord.create(form);
+        toast.success("New attendance record created.");
       }
       setModalOpen(false);
       setEditing(null);
       load();
     } catch {
-      alert("Failed to save attendance record. Please try again.");
+      toast.error("Failed to save attendance record. Please try again.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this attendance record?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.AttendanceRecord.delete(id);
-      setRecords(r => r.filter(x => x.id !== id));
+      await base44.entities.AttendanceRecord.delete(confirmDeleteId);
+      setRecords(r => r.filter(x => x.id !== confirmDeleteId));
+      toast.success("Attendance record deleted successfully.");
+      setConfirmDeleteId(null);
     } catch {
-      alert("Failed to delete record. Please try again.");
+      toast.error("Failed to delete record. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -193,26 +213,34 @@ export default function Attendance() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Attendance Operations Center</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time biometric & digital punch records · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-slate-900 border border-[#DCE6F2] dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF3FF] dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 shrink-0 shadow-2xs">
+            <Clock size={22} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#102A43] dark:text-white">Attendance Operations Center</h2>
+            <p className="text-xs sm:text-sm text-[#52677F] dark:text-slate-400 mt-0.5">
+              Real-time biometric & digital punch records · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <Button onClick={exportCSV} variant="outline" className="gap-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
             <Download className="w-4 h-4" /> Export CSV
           </Button>
-          <Button onClick={openAdd} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-lg shadow-indigo-600/20">
+          <Button onClick={openAdd} className="bg-[#2563EB] hover:bg-blue-700 text-white gap-2 shadow-xs cursor-pointer">
             <Plus className="w-4 h-4" /> Log Manual Attendance
           </Button>
         </div>
       </div>
 
       {loadError && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-700">
-          {loadError}
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <Button onClick={load} variant="outline" size="sm" className="h-8 text-xs gap-1 cursor-pointer">
+            <RefreshCw size={12} /> Retry
+          </Button>
         </div>
       )}
 
@@ -329,13 +357,25 @@ export default function Attendance() {
           {/* Table */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
             {loading ? (
-              <div className="flex items-center justify-center h-40">
-                <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+              <div className="p-4">
+                <SkeletonTable rows={5} />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                <Calendar className="w-8 h-8 mb-2 opacity-40" />
-                <p className="text-sm">No attendance records found matching filters</p>
+              <div className="p-6">
+                <EmptyState
+                  icon={Clock}
+                  title="No Attendance Logs Found"
+                  description="No time punch or manual attendance records match your current search and filters."
+                  action={
+                    <Button
+                      onClick={() => { setSearch(""); setFilterDate(""); setFilterStatus("all"); }}
+                      variant="outline"
+                      className="text-xs cursor-pointer"
+                    >
+                      Reset Filters
+                    </Button>
+                  }
+                />
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -501,6 +541,17 @@ export default function Attendance() {
         onSave={handleSave}
         editing={editing}
         employees={employees}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Attendance Record"
+        message="Are you sure you want to delete this attendance record? This action cannot be undone."
+        confirmLabel="Delete Record"
+        danger={true}
+        loading={deleting}
       />
     </div>
   );

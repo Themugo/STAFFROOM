@@ -6,10 +6,10 @@ const ToastContext = createContext(null)
 let toastId = 0
 
 const TOAST_STYLES = {
-  success: { icon: CheckCircle, bg: 'bg-green-50 dark:bg-green-900/30', border: 'border-green-200 dark:border-green-800', text: 'text-green-800 dark:text-green-300', iconColor: 'text-green-500' },
-  error: { icon: AlertCircle, bg: 'bg-red-50 dark:bg-red-900/30', border: 'border-red-200 dark:border-red-800', text: 'text-red-800 dark:text-red-300', iconColor: 'text-red-500' },
-  warning: { icon: AlertTriangle, bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-800 dark:text-amber-300', iconColor: 'text-amber-500' },
-  info: { icon: Info, bg: 'bg-blue-50 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-800 dark:text-blue-300', iconColor: 'text-blue-500' },
+  success: { icon: CheckCircle, bg: 'bg-white', border: 'border-emerald-200 shadow-lg shadow-emerald-500/5', text: 'text-[#102A43]', iconColor: 'text-emerald-500' },
+  error: { icon: AlertCircle, bg: 'bg-white', border: 'border-red-200 shadow-lg shadow-red-500/5', text: 'text-[#102A43]', iconColor: 'text-red-500' },
+  warning: { icon: AlertTriangle, bg: 'bg-white', border: 'border-amber-200 shadow-lg shadow-amber-500/5', text: 'text-[#102A43]', iconColor: 'text-amber-500' },
+  info: { icon: Info, bg: 'bg-white', border: 'border-[#2563EB]/20 shadow-lg shadow-[#2563EB]/5', text: 'text-[#102A43]', iconColor: 'text-[#2563EB]' },
 }
 
 export function ToastProvider({ children }) {
@@ -48,21 +48,21 @@ function ToastContainer({ toasts, onDismiss }) {
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-2 pointer-events-none">
       {toasts.map((t) => {
         const style = TOAST_STYLES[t.type] || TOAST_STYLES.info
         const Icon = style.icon
         return (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-lg border ${style.bg} ${style.border} px-4 py-3 shadow-lg animate-fade-in-up max-w-sm`}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border ${style.bg} ${style.border} px-4 py-3.5 shadow-xl animate-fade-in-up sm:max-w-md w-full`}
             role="alert"
           >
             <Icon size={18} className={`mt-0.5 shrink-0 ${style.iconColor}`} />
-            <p className={`flex-1 text-sm font-medium ${style.text}`}>{t.message}</p>
+            <p className={`flex-1 text-xs sm:text-sm font-semibold ${style.text}`}>{t.message}</p>
             <button
               onClick={() => onDismiss(t.id)}
-              className={`shrink-0 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10 ${style.text}`}
+              className={`shrink-0 rounded-lg p-1 hover:bg-slate-100 ${style.text} cursor-pointer`}
               aria-label="Dismiss notification"
             >
               <X size={14} />

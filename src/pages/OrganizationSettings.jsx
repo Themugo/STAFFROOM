@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useOrganization } from '../contexts/OrganizationContext'
 import { useNotifications } from '../contexts/NotificationContext'
 import PageHeader from '../components/ui/PageHeader'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import StatusBadge from '../components/ui/StatusBadge'
 
 // Tabs component renders text-only buttons (no icon support), so we keep a
@@ -107,7 +107,7 @@ export default function OrganizationSettings() {
           icon={Building2}
         />
 
-        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
+        <CustomTabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
         <div className="card p-6 mt-6">
           {activeTab === 'general' && (

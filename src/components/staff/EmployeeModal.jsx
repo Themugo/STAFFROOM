@@ -103,8 +103,8 @@ export default function EmployeeModal({ open, onClose, onSave, employee }) {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" className="text-white" style={{ background: "#0F1B2D" }}>
+            <Button type="button" variant="outline" onClick={onClose} className="rounded-xl font-bold border-[#DCE6F2] text-[#52677F] hover:bg-[#F6F9FD]">Cancel</Button>
+            <Button type="submit" className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-2xs">
               {employee ? "Save Changes" : "Add Employee"}
             </Button>
           </div>

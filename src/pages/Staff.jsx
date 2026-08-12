@@ -25,6 +25,10 @@ import EmployeeDirectoryTable from "@/components/staff/EmployeeDirectoryTable";
 import EmployeeQuickPreviewDrawer from "@/components/staff/EmployeeQuickPreviewDrawer";
 import OnboardingModal from "@/components/staff/OnboardingModal";
 import AiChatPanel from "@/components/shared/AiChatPanel";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonTable } from "@/components/ui/SkeletonLoaders";
+import { useToast } from "@/contexts/ToastContext";
 
 const DEPARTMENTS = ["All", "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Design", "Legal", "Executive"];
 const STATUSES = ["All", "Active", "On Leave", "Terminated"];
@@ -38,6 +42,7 @@ const SAVED_VIEWS = [
 ];
 
 export default function Staff() {
+  const toast = useToast();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -61,6 +66,8 @@ export default function Staff() {
   const [editing, setEditing] = useState(null);
   const [quickPreviewEmp, setQuickPreviewEmp] = useState(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async () => {
     setLoadError(null);
@@ -115,14 +122,16 @@ export default function Staff() {
     try {
       if (editing) {
         await base44.entities.Employee.update(editing.id, data);
+        toast.success("Employee record updated successfully.");
       } else {
         await base44.entities.Employee.create(data);
+        toast.success("New employee added successfully.");
       }
       setModalOpen(false);
       setEditing(null);
       loadData();
     } catch {
-      alert("Failed to save employee record.");
+      toast.error("Failed to save employee record.");
     }
   };
 
@@ -131,13 +140,22 @@ export default function Staff() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this employee record?")) return;
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
     try {
-      await base44.entities.Employee.delete(id);
+      await base44.entities.Employee.delete(confirmDeleteId);
+      toast.success("Employee record deleted successfully.");
+      setConfirmDeleteId(null);
       loadData();
     } catch {
-      alert("Failed to delete employee record.");
+      toast.error("Failed to delete employee record.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -198,21 +216,28 @@ export default function Staff() {
       />
 
       {loadError && (
-        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 text-xs font-bold text-rose-700 dark:text-rose-300">
-          {loadError}
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button
+            onClick={loadData}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors cursor-pointer shrink-0"
+          >
+            <RefreshCw size={12} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
       {/* Saved Views Bar */}
       <div className="flex items-center gap-2 pb-1 overflow-x-auto custom-scrollbar">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">Saved Views:</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 mr-1">Saved Views:</span>
         {SAVED_VIEWS.map((view) => (
           <button
             key={view.id}
             onClick={() => handleApplySavedView(view)}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               activeSavedView === view.id
-                ? "bg-indigo-600 text-white shadow-xs"
+                ? "bg-[#2563EB] text-white shadow-2xs font-bold"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
             }`}
           >
@@ -222,7 +247,7 @@ export default function Staff() {
       </div>
 
       {/* Search & Advanced Filters Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-[#DCE6F2] dark:border-slate-800 p-4 shadow-2xs space-y-3">
         <div className="flex flex-col lg:flex-row gap-3">
           {/* Main Search Input */}
           <div className="relative flex-1">
@@ -232,7 +257,7 @@ export default function Staff() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by full name, job title, email, or employee ID..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
             />
             {search && (
               <button
@@ -252,7 +277,7 @@ export default function Staff() {
                 setDeptFilter(e.target.value);
                 setActiveSavedView(null);
               }}
-              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
             >
               {DEPARTMENTS.map((d) => (
                 <option key={d} value={d}>
@@ -267,7 +292,7 @@ export default function Staff() {
                 setStatusFilter(e.target.value);
                 setActiveSavedView(null);
               }}
-              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -279,7 +304,7 @@ export default function Staff() {
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden sm:block"
+              className="px-3 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB] hidden sm:block"
             >
               {LOCATIONS.map((l) => (
                 <option key={l} value={l}>
@@ -294,7 +319,7 @@ export default function Staff() {
                 onClick={() => setViewMode("table")}
                 className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
                   viewMode === "table"
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold"
+                    ? "bg-white dark:bg-slate-900 text-[#2563EB] dark:text-blue-400 shadow-2xs font-bold"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 }`}
                 title="Data Table View"
@@ -305,7 +330,7 @@ export default function Staff() {
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
                   viewMode === "grid"
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold"
+                    ? "bg-white dark:bg-slate-900 text-[#2563EB] dark:text-blue-400 shadow-2xs font-bold"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 }`}
                 title="Card Grid View"
@@ -318,25 +343,25 @@ export default function Staff() {
 
         {/* Bulk Actions Banner */}
         {selectedIds.length > 0 && (
-          <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-3 animate-in fade-in duration-150">
+          <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-3 animate-in fade-in duration-150">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-black text-xs flex items-center justify-center">
+              <span className="w-6 h-6 rounded-lg bg-[#2563EB] text-white font-black text-xs flex items-center justify-center">
                 {selectedIds.length}
               </span>
-              <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
+              <span className="text-xs font-bold text-blue-900 dark:text-blue-200">
                 {selectedIds.length} employee{selectedIds.length > 1 ? "s" : ""} selected
               </span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExportCSV}
-                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-[#2563EB] dark:text-blue-300 font-bold text-xs border border-blue-200 dark:border-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
               >
                 Export Selected
               </button>
               <button
                 onClick={() => setSelectedIds([])}
-                className="p-1 text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200 cursor-pointer"
+                className="p-1 text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 cursor-pointer"
                 title="Deselect All"
               >
                 <X className="w-4 h-4" />
@@ -348,26 +373,28 @@ export default function Staff() {
 
       {/* Main Roster View */}
       {loading ? (
-        <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mx-auto" />
-          <p className="text-xs text-slate-400 font-medium">Loading employee directory...</p>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs">
+          <SkeletonTable rows={5} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-12 text-center max-w-md mx-auto my-8">
-          <SlidersHorizontal className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">No Matching Employees</h3>
-          <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search query to find staff members.</p>
-          <button
-            onClick={() => {
-              setSearch("");
-              setDeptFilter("All");
-              setStatusFilter("All");
-              setLocationFilter("All");
-            }}
-            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
-          >
-            Reset Filters
-          </button>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs">
+          <EmptyState
+            title="No Matching Employees Found"
+            description="No staff profiles match your active search term or filter criteria."
+            action={
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setDeptFilter("All");
+                  setStatusFilter("All");
+                  setLocationFilter("All");
+                }}
+                className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs cursor-pointer transition-colors"
+              >
+                Clear Search & Filters
+              </button>
+            }
+          />
         </div>
       ) : viewMode === "table" ? (
         <EmployeeDirectoryTable
@@ -386,6 +413,18 @@ export default function Staff() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Employee Record"
+        message="Are you sure you want to delete this employee record? This action cannot be undone and will remove them from the staff directory."
+        confirmLabel="Delete Record"
+        danger={true}
+        loading={deleting}
+      />
 
       {/* Add / Edit Onboarding Modal */}
       <OnboardingModal

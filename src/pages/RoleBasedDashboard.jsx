@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 import StatCard from '../components/ui/StatCard'
 import PageHeader from '../components/ui/PageHeader'
-import Avatar from '../components/ui/Avatar'
+import UserAvatar from '../components/ui/UserAvatar'
 import StatusBadge from '../components/ui/StatusBadge'
 import Spinner from '../components/ui/Spinner'
 import { formatCurrency, formatDate } from '../lib/format'

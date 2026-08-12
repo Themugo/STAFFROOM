@@ -22,7 +22,7 @@ import EmptyState from '../components/ui/EmptyState'
 import StatCard from '../components/ui/StatCard'
 import DataTable from '../components/ui/DataTable'
 import SearchInput from '../components/ui/SearchInput'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import Spinner from '../components/ui/Spinner'
 
 // ---- Constants ----
@@ -597,7 +597,7 @@ export default function HelpDesk() {
       />
 
       {/* Tabs */}
-      <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+      <CustomTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* ---- My Tickets Tab ---- */}
       {activeTab === 'mine' && (

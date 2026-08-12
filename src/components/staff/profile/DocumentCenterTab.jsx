@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { FileText, Download, Upload, Eye, CheckCircle2, AlertTriangle, RefreshCw, Plus, FileCheck, Shield } from "lucide-react";
+import { useToast } from "@/contexts/ToastContext";
 
 export function DocumentCenterTab({ documents, onUploadDocument }) {
+  const toast = useToast();
   const [docList, setDocList] = useState(documents || []);
   const [previewDoc, setPreviewDoc] = useState(null);
 
   const handleDownloadMock = (doc) => {
-    alert(`Downloading ${doc.name}...`);
+    toast.info(`Downloading ${doc.name}...`);
   };
 
   return (

@@ -1,0 +1,37 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /contact
+Allow: /pricing
+Allow: /features
+Allow: /platform
+Allow: /blog
+Allow: /privacy
+Allow: /terms
+
+# Disallow private application dashboard and admin routes
+Disallow: /Dashboard
+Disallow: /Staff
+Disallow: /Employees
+Disallow: /Payroll
+Disallow: /Leave
+Disallow: /Attendance
+Disallow: /Settings
+Disallow: /Users
+Disallow: /AuditLog
+Disallow: /Reports
+Disallow: /Recruitment
+Disallow: /Performance
+Disallow: /Onboarding
+Disallow: /Benefits
+Disallow: /Documents
+Disallow: /SelfService
+Disallow: /Procurement
+Disallow: /AssetManagement
+Disallow: /ExecutiveGovernance
+Disallow: /GovernanceRiskCompliance
+Disallow: /IntegrationHub
+Disallow: /PlatformControlCenter
+Disallow: /api/
+
+Sitemap: https://staffroom.ke/sitemap.xml

@@ -11,7 +11,7 @@ import EmptyState from '../components/ui/EmptyState'
 import StatCard from '../components/ui/StatCard'
 import DataTable from '../components/ui/DataTable'
 import SearchInput from '../components/ui/SearchInput'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import Spinner from '../components/ui/Spinner'
 
 const EMPTY_FORM = {
@@ -332,7 +332,7 @@ export default function ExpenseClaims() {
 
       {/* Tabs + Search */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        <CustomTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
         <SearchInput
           value={search}
           onChange={setSearch}

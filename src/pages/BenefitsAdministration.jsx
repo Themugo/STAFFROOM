@@ -10,7 +10,7 @@ import DataTable from '../components/ui/DataTable'
 import StatusBadge from '../components/ui/StatusBadge'
 import EmptyState from '../components/ui/EmptyState'
 import Spinner from '../components/ui/Spinner'
-import Tabs from '../components/ui/Tabs'
+import CustomTabs from '../components/ui/CustomTabs'
 import {
   HeartPulse,
   Plus,
@@ -524,7 +524,7 @@ export default function BenefitsAdministration() {
       />
 
       <div className="mb-6">
-        <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        <CustomTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
       </div>
 
       {/* ----------------------------------------------------------------- */}

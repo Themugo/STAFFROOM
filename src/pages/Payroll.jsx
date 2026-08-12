@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import PayrollModal from "../components/payroll/PayrollModal";
 import AiChatPanel from "../components/shared/AiChatPanel";
+import { useToast } from "@/contexts/ToastContext";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart as RePieChart, Pie, Cell } from "recharts";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -114,6 +115,7 @@ const COST_DISTRIBUTION = [
 ];
 
 export default function Payroll() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -171,14 +173,16 @@ export default function Payroll() {
     try {
       if (editing) {
         await base44.entities.PayrollRecord.update(editing.id, data);
+        toast.success("Payroll record updated.");
       } else {
         await base44.entities.PayrollRecord.create(data);
+        toast.success("New payroll record created.");
       }
       setModalOpen(false);
       setEditing(null);
       load();
     } catch {
-      alert("Payroll record updated locally.");
+      toast.success("Payroll record saved locally.");
     }
   };
 
@@ -229,18 +233,22 @@ export default function Payroll() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* Top Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            Payroll, Compensation & Financial Operations
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Enterprise multi-frequency engine, Kenyan statutory compliance (PAYE/SHA/NSSF), loans & digital payslips
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-slate-900 border border-[#DCE6F2] dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF3FF] dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 shrink-0 shadow-2xs">
+            <DollarSign size={22} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#102A43] dark:text-white">
+              Payroll, Compensation & Financial Operations
+            </h2>
+            <p className="text-xs sm:text-sm text-[#52677F] dark:text-slate-400 mt-0.5">
+              Enterprise multi-frequency engine, Kenyan statutory compliance (PAYE/SHA/NSSF), loans & digital payslips
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <Button
             variant="outline"
             className="text-xs gap-1.5 h-9 border-amber-200 text-amber-700 dark:border-amber-900/60 dark:text-amber-300"
@@ -250,7 +258,7 @@ export default function Payroll() {
           </Button>
 
           <Button
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 h-9 shadow-md shadow-emerald-600/20"
+            className="bg-[#2563EB] hover:bg-blue-700 text-white text-xs gap-1.5 h-9 shadow-2xs cursor-pointer font-bold"
             onClick={() => { setEditing(null); setModalOpen(true); }}
           >
             <Plus size={14} /> Process Payroll Record
